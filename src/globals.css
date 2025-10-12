@@ -1,0 +1,366 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Styles */
+:root {
+  --font-size-adjustment: 0rem;
+}
+
+html, body {
+  font-size: calc(1rem + var(--font-size-adjustment));
+}
+
+/* High Contrast Mode Styles */
+.high-contrast {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.high-contrast a {
+  color: yellow !important;
+  text-decoration: underline !important;
+}
+
+.high-contrast .bg-muted {
+  background-color: #333 !important;
+}
+
+.high-contrast button {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
+}
+
+.high-contrast input,
+.high-contrast textarea,
+.high-contrast select {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
+}
+
+.high-contrast .card,
+.high-contrast .header,
+.high-contrast .footer {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.high-contrast .text-muted-foreground {
+  color: #ccc !important; /* Light grey for visibility */
+}
+
+.high-contrast kbd {
+  background-color: #000 !important;
+  color: yellow !important;
+  border: 1px solid yellow !important;
+}
+
+/* Dark Mode Base Styles (complementing Tailwind's dark: variants) */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1f2937; /* Tailwind's gray-900 */
+    color: #f3f4f6; /* Tailwind's gray-100 */
+  }
+}
+
+/* Responsive Styles for Mobile (max-width: 640px, equivalent to Tailwind's sm breakpoint) */
+@media (max-width: 640px) {
+  /* Containers */
+  main, .container {
+    padding: 1rem !important; /* Override Tailwind's p-8, p-6, etc. */
+    max-width: 100% !important; /* Override max-w-3xl, max-w-4xl, etc. */
+  }
+
+  footer {
+    padding: 1.5rem 1rem !important; /* Override py-6 sm:py-8 md:py-12 */
+    margin-top: 2rem !important; /* Override mt-8 sm:mt-12 */
+  }
+
+  footer .container {
+    padding: 1rem !important; /* Override p-4 sm:p-6 md:p-8 */
+  }
+
+  /* Grid Layouts */
+  .grid-cols-4, .grid-cols-2, .grid-cols-1 {
+    grid-template-columns: 1fr !important; /* Stack columns on mobile */
+  }
+
+  .gap-8, .gap-6, .gap-4 {
+    gap: 1rem !important; /* Reduce grid gap */
+  }
+
+  /* Flex Layouts */
+  .flex:not(.flex-col) {
+    flex-direction: column !important; /* Stack flex items vertically */
+    gap: 0.5rem !important; /* Reduce spacing */
+  }
+
+  /* Headings */
+  h1 {
+    font-size: 1.5rem !important; /* Override text-4xl, text-3xl to 24px */
+    margin-bottom: 1rem !important;
+  }
+
+  h2, h3 {
+    font-size: 1.125rem !important; /* Override text-2xl, text-xl to 18px */
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Text */
+  p, li, label, span:not(.text-muted-foreground) {
+    font-size: 0.875rem !important; /* Override text-base to 14px */
+  }
+
+  .text-muted-foreground, .text-gray-600, .text-gray-500 {
+    font-size: 0.75rem !important; /* Override to 12px for secondary text */
+  }
+
+  /* Links and Buttons */
+  a, button {
+    min-height: 44px !important; /* WCAG-compliant touch target */
+    padding: 0.5rem 0.75rem !important; /* Smaller padding */
+    font-size: 0.875rem !important; /* 14px */
+  }
+
+  button:not(.flex) {
+    width: 100% !important; /* Full-width buttons on mobile */
+  }
+
+  /* Form Elements */
+  input, select, textarea {
+    font-size: 0.875rem !important; /* 14px */
+    padding: 0.5rem !important;
+  }
+
+  input[type="range"] {
+    height: 44px !important; /* Touch-friendly slider */
+  }
+
+  /* Spacing */
+  .space-y-6, .space-y-4 {
+    gap: 1rem !important; /* Reduce vertical spacing */
+  }
+
+  .mb-6, .mt-6, .py-6, .pt-6 {
+    margin-bottom: 1rem !important;
+    margin-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    padding-top: 1rem !important;
+  }
+
+  .mb-4, .mt-4, .py-4, .pt-4 {
+    margin-bottom: 0.75rem !important;
+    margin-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+    padding-top: 0.75rem !important;
+  }
+
+  /* Footer-Specific */
+  footer ul {
+    gap: 0.5rem !important; /* Reduce link spacing */
+  }
+
+  footer .border-t {
+    margin-top: 1.5rem !important;
+    padding-top: 1rem !important;
+  }
+}
+
+/* Responsive Styles for Tablets (min-width: 641px and max-width: 768px, between Tailwind's sm and md) */
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Containers */
+  main, .container {
+    padding: 1.5rem !important; /* Slightly larger than mobile (1rem), smaller than desktop (2rem) */
+    max-width: 100% !important; /* Full width for tablets */
+  }
+
+  footer {
+    padding: 2rem 1.5rem !important; /* Override py-6 sm:py-8 md:py-12 */
+    margin-top: 2.5rem !important; /* Override mt-8 sm:mt-12 */
+  }
+
+  footer .container {
+    padding: 1.5rem !important; /* Override p-4 sm:p-6 md:p-8 */
+  }
+
+  /* Grid Layouts */
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important; /* Two columns for footer */
+  }
+
+  .grid-cols-2, .grid-cols-1 {
+    grid-template-columns: 1fr !important; /* Keep single column for other grids */
+  }
+
+  .gap-8, .gap-6, .gap-4 {
+    gap: 1.5rem !important; /* Moderate grid gap */
+  }
+
+  /* Flex Layouts */
+  .flex:not(.flex-col) {
+    flex-direction: row !important; /* Horizontal layout for navigation, etc. */
+    gap: 1rem !important; /* Moderate spacing */
+  }
+
+  /* Headings */
+  h1 {
+    font-size: 1.875rem !important; /* 30px, between mobile (1.5rem) and desktop (2.25rem) */
+    margin-bottom: 1.25rem !important;
+  }
+
+  h2, h3 {
+    font-size: 1.25rem !important; /* 20px, between mobile (1.125rem) and desktop (1.5rem) */
+    margin-bottom: 1rem !important;
+  }
+
+  /* Text */
+  p, li, label, span:not(.text-muted-foreground) {
+    font-size: 1rem !important; /* 16px, between mobile (0.875rem) and desktop (1rem) */
+  }
+
+  .text-muted-foreground, .text-gray-600, .text-gray-500 {
+    font-size: 0.875rem !important; /* 14px, between mobile (0.75rem) and desktop (1rem) */
+  }
+
+  /* Links and Buttons */
+  a, button {
+    min-height: 44px !important; /* WCAG-compliant touch target */
+    padding: 0.75rem 1rem !important; /* Slightly larger than mobile */
+    font-size: 1rem !important; /* 16px */
+  }
+
+  button:not(.flex) {
+    width: auto !important; /* Avoid full-width buttons on tablets */
+  }
+
+  /* Form Elements */
+  input, select, textarea {
+    font-size: 1rem !important; /* 16px */
+    padding: 0.75rem !important;
+  }
+
+  input[type="range"] {
+    height: 44px !important; /* Touch-friendly slider */
+  }
+
+  /* Spacing */
+  .space-y-6, .space-y-4 {
+    gap: 1.5rem !important; /* Moderate vertical spacing */
+  }
+
+  .mb-6, .mt-6, .py-6, .pt-6 {
+    margin-bottom: 1.25rem !important;
+    margin-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+    padding-top: 1.25rem !important;
+  }
+
+  .mb-4, .mt-4, .py-4, .pt-4 {
+    margin-bottom: 1rem !important;
+    margin-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    padding-top: 1rem !important;
+  }
+
+  /* Footer-Specific */
+  footer ul {
+    gap: 0.75rem !important; /* Moderate link spacing */
+  }
+
+  footer .border-t {
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+  }
+}
+
+/* Ensure High-Contrast Mode Overrides on Mobile and Tablets */
+@media (max-width: 768px) and (prefers-contrast: high) {
+  .high-contrast main,
+  .high-contrast footer,
+  .high-contrast .container {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+
+  .high-contrast a,
+  .high-contrast button {
+    color: yellow !important;
+    border-color: #fff !important;
+  }
+}
+
+/* High-contrast mode */
+body.high-contrast {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+}
+
+body.high-contrast button,
+body.high-contrast a,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea,
+body.high-contrast label {
+  background: #fff !important;
+  color: #000 !important;
+  border-color: #000 !important;
+}
+
+.high-contrast {
+  /* Override for high contrast */
+  --bg-white: #fff;
+  --bg-gray-100: #fff;
+  --bg-gray-200: #ddd;
+  --bg-gray-800: #000;
+  --bg-gray-900: #000;
+  --bg-blue-100: #fff;
+  --bg-blue-900: #000;
+  --bg-yellow-100: #fff;
+  --bg-yellow-200: #ddd;
+  --text-gray-900: #000;
+  --text-gray-800: #000;
+  --text-gray-700: #000;
+  --text-gray-600: #333;
+  --text-gray-300: #333;
+  --text-blue-800: #000;
+  --text-blue-900: #000;
+  --text-blue-600: #000;
+  --text-blue-400: #000;
+}
+
+.high-contrast .bg-white { background-color: var(--bg-white); }
+.high-contrast .bg-gray-100 { background-color: var(--bg-gray-100); }
+.high-contrast .bg-gray-200 { background-color: var(--bg-gray-200); }
+.high-contrast .bg-gray-800 { background-color: var(--bg-gray-800); }
+.high-contrast .bg-gray-900 { background-color: var(--bg-gray-900); }
+.high-contrast .bg-blue-100 { background-color: var(--bg-blue-100); }
+.high-contrast .bg-blue-900 { background-color: var(--bg-blue-900); }
+.high-contrast .bg-yellow-100 { background-color: var(--bg-yellow-100); }
+.high-contrast .bg-yellow-200 { background-color: var(--bg-yellow-200); }
+.high-contrast .text-gray-900 { color: var(--text-gray-900); }
+.high-contrast .text-gray-800 { color: var(--text-gray-800); }
+.high-contrast .text-gray-700 { color: var(--text-gray-700); }
+.high-contrast .text-gray-600 { color: var(--text-gray-600); }
+.high-contrast .text-gray-300 { color: var(--text-gray-300); }
+.high-contrast .text-blue-800 { color: var(--text-blue-800); }
+.high-contrast .text-blue-900 { color: var(--text-blue-900); }
+.high-contrast .text-blue-600 { color: var(--text-blue-600); }
+.high-contrast .text-blue-400 { color: var(--text-blue-400); }
+
+/* Ensure DarkModeToggle icons are visible in high-contrast */
+body.high-contrast .text-yellow-400,
+body.high-contrast .text-gray-700 {
+  color: #000 !important;
+}
+
+/* Form field focus states for accessibility */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #3b82f6; /* blue-500 */
+  outline-offset: 2px;
+}
+

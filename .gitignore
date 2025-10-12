@@ -1,0 +1,53 @@
+# Node.js (Frontend and Backend)
+node_modules/
+.env
+accessible-job-portal-backend/.env  # Backend-specific env
+dist/
+build/
+*.log
+npm-debug.log
+yarn-error.log
+
+# Vite (Frontend)
+.cache/
+vite.config.js.timestamp*
+
+# Backend build artifacts
+accessible-job-portal-backend/dist/
+accessible-job-portal-backend/build/
+
+# Sensitive files
+*.env.local
+*.env.development
+*.env.test
+*.env.production
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+coverage/
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build output
+public/build/
+
+# Uploaded documents (sensitive user data)
+accessible-job-portal-backend/Uploads/
+accessible-job-portal-backend/uploads/  # Alternative casing/folder if used
+
+# Migration scripts (environment-specific or sensitive)
+accessible-job-portal-backend/migrate.js
+accessible-job-portal-backend/migrateApplications.js
+accessible-job-portal-backend/dbfix.js
+accessible-job-portal-backend/createAdmin.js
+accessible-job-portal-backend/mgrate.js  # If this typo exists
+accessible-job-portal-backend/test-email.js  # Testing script, optional to ignore
