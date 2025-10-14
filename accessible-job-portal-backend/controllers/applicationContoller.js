@@ -9,7 +9,7 @@ export const updateApplicationStatus = async (req, res) => {
     const { status, notes } = req.body; // Extract notes from req.body
     const { id } = req.params;
 
-    if (!['Pending', 'Accepted', 'Rejected'].includes(status)) {
+    if (!['Pending', 'Accepted', 'Rejected', 'Interview Scheduled'].includes(status)) {
       console.log('❌ Invalid status value');
       return res.status(400).json({ message: 'Invalid status value' });
     }
