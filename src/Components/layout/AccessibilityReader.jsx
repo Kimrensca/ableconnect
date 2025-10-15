@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import useTextToSpeech from '../../hooks/useTextToSpeech';
+import  useTextToSpeech  from '../../hooks/useTextToSpeech';
 
 const TOAST_MS = 1700;
 
@@ -17,16 +16,10 @@ const AccessibilityReader = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const panelRef = useRef(null);
   const dragData = useRef({ dragging: false, offsetX: 0, offsetY: 0 });
-  const resumeButtonRef = useRef(null);
-  const stopButtonRef = useRef(null);
 
   useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = synth.getVoices();
-      setVoices(availableVoices);
-    };
-    loadVoices();
-    synth.onvoiceschanged = loadVoices;
+    setVoices(synth.getVoices());
+    synth.onvoiceschanged = () => setVoices(synth.getVoices());
     return () => {
       synth.onvoiceschanged = null;
     };
@@ -73,7 +66,7 @@ const AccessibilityReader = () => {
       if (selectedVoice) utterance.voice = selectedVoice;
       utterance.rate = settings.tts.rate;
       utterance.volume = settings.tts.volume;
-      utterance.onstart = () => {
+      utterance.onstart = () =>
         toast.success('🔊 Reading started', {
           duration: TOAST_MS,
           position: 'top-center',
@@ -83,8 +76,6 @@ const AccessibilityReader = () => {
             border: '1px solid #15803d',
           },
         });
-        setIsPaused(false);
-      };
       utterance.onend = () => {
         toast.success('✅ Reading finished', {
           duration: TOAST_MS,
@@ -96,7 +87,6 @@ const AccessibilityReader = () => {
           },
         });
         setIsPaused(false);
-        setCurrentIndex(0);
       };
       utterance.onboundary = (event) => {
         if (event.name === 'word' || event.name === 'sentence') {
@@ -105,50 +95,19 @@ const AccessibilityReader = () => {
       };
       synth.speak(utterance);
       utteranceRef.current = utterance;
+      setIsPaused(false);
     },
     [settings.tts, voices, synth]
   );
 
-  const resumeFromIndex = useCallback(
-    (newRate = settings.tts.rate, newVolume = settings.tts.volume) => {
-      if (isPaused && utteranceRef.current) {
-        synth.cancel();
-        const text = window.getSelection().toString().trim() || getPageText();
-        const remaining = text.slice(currentIndex);
-        if (remaining) {
-          const utterance = new SpeechSynthesisUtterance(remaining);
-          const selectedVoice = voices.find((v) => v.name === settings.tts.voice);
-          if (selectedVoice) utterance.voice = selectedVoice;
-          utterance.rate = newRate;
-          utterance.volume = newVolume;
-          utterance.onstart = () => {
-            toast.success('🔄 Reading resumed', {
-              duration: TOAST_MS,
-              position: 'top-center',
-              style: {
-                background: '#f0fdf4',
-                color: '#15803d',
-                border: '1px solid #15803d',
-              },
-            });
-            setIsPaused(false);
-          };
-          utterance.onend = () => {
-            setIsPaused(false);
-            setCurrentIndex(0);
-          };
-          utterance.onboundary = (event) => {
-            if (event.name === 'word' || event.name === 'sentence') {
-              setCurrentIndex(currentIndex + event.charIndex);
-            }
-          };
-          synth.speak(utterance);
-          utteranceRef.current = utterance;
-        }
-      }
-    },
-    [isPaused, currentIndex, settings.tts, voices, synth]
-  );
+  const resumeFromIndex = (newRate = settings.tts.rate, newVolume = settings.tts.volume) => {
+    const text = window.getSelection().toString().trim() || getPageText();
+    if (text && synth.speaking) {
+      synth.cancel();
+      const remaining = text.slice(currentIndex);
+      speak(remaining);
+    }
+  };
 
   const handleSpeak = useCallback(() => {
     const text = window.getSelection().toString().trim() || getPageText();
@@ -191,7 +150,7 @@ const AccessibilityReader = () => {
   }, [synth]);
 
   const handleResume = useCallback(() => {
-    if (synth.paused && utteranceRef.current) {
+    if (synth.paused) {
       synth.resume();
       setIsPaused(false);
       toast.success('🔄 Reading resumed', {
@@ -203,31 +162,21 @@ const AccessibilityReader = () => {
           border: '1px solid #15803d',
         },
       });
-      if (resumeButtonRef.current) {
-        resumeButtonRef.current.focus();
-      }
     }
   }, [synth]);
 
   const handleStop = useCallback(() => {
-    if (synth.speaking || synth.paused) {
-      synth.cancel();
-      setIsPaused(false);
-      setCurrentIndex(0);
-      utteranceRef.current = null;
-      toast.success('⏹ Reading stopped', {
-        duration: TOAST_MS,
-        position: 'top-center',
-        style: {
-          background: '#f0fdf4',
-          color: '#15803d',
-          border: '1px solid #15803d',
-        },
-      });
-      if (stopButtonRef.current) {
-        stopButtonRef.current.focus();
-      }
-    }
+    synth.cancel();
+    setIsPaused(false);
+    toast.success('⏹ Reading stopped', {
+      duration: TOAST_MS,
+      position: 'top-center',
+      style: {
+        background: '#f0fdf4',
+        color: '#15803d',
+        border: '1px solid #15803d',
+      },
+    });
   }, [synth]);
 
   const onMouseDown = (e) => {
@@ -261,8 +210,6 @@ const AccessibilityReader = () => {
   useEffect(() => {
     synth.cancel();
     setIsPaused(false);
-    setCurrentIndex(0);
-    utteranceRef.current = null;
   }, [location.pathname, synth]);
 
   useEffect(() => {
@@ -279,7 +226,7 @@ const AccessibilityReader = () => {
         e.preventDefault();
         if (synth.paused) {
           handleResume();
-        } else if (synth.speaking) {
+        } else {
           handlePause();
         }
       }
@@ -290,32 +237,44 @@ const AccessibilityReader = () => {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleSpeak, handleReadHighlighted, handlePause, handleResume, handleStop, synth]);
+  }, [handleSpeak, handleReadHighlighted, handlePause, handleResume, handleStop, synth.paused]);
 
   return (
     <>
       <button
-        onClick={() => setIsOpen((s) => !s)}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 z-50"
-        aria-label={isOpen ? 'Close Accessibility Reader' : 'Open Accessibility Reader'}
-      >
-        {isOpen ? '✖' : '🗣️'}
-      </button>
+  onClick={() => setIsOpen((s) => !s)}
+  className="
+    fixed bottom-6 right-6 sm:bottom-4 sm:right-4
+    bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700
+    text-lg z-50
+  "
+  aria-label="Toggle Accessibility Reader"
+>
+  {isOpen ? '✖' : '🗣️'}
+</button>
+
       {isOpen && (
-        <div
-          id="accessibility-reader"
-          ref={panelRef}
-          onMouseDown={onMouseDown}
-          style={{
-            position: 'fixed',
-            bottom: '80px',
-            right: '24px',
-            cursor: 'move',
-          }}
-          className="bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg p-4 w-80 sm:w-96 border z-50"
-          role="region"
-          aria-label="Accessibility reader controls"
-        >
+  <div
+    id="accessibility-reader"
+    ref={panelRef}
+    onMouseDown={(e) => window.innerWidth > 768 && onMouseDown(e)} // disable drag on small screens
+    style={
+      window.innerWidth > 768
+        ? { position: 'fixed', bottom: '80px', right: '24px', cursor: 'move' }
+        : {}
+    }
+    className={`
+      fixed z-50 border p-4 shadow-lg rounded-lg
+      bg-gray-100 dark:bg-gray-800
+      transition-all duration-300 ease-in-out
+      ${window.innerWidth > 768
+        ? 'w-80 h-auto'
+        : 'bottom-0 left-0 right-0 w-full h-[70vh] rounded-t-2xl overflow-y-auto'}
+    `}
+    role="region"
+    aria-label="Accessibility reader controls"
+  >
+
           <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Accessibility Reader</h2>
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100" htmlFor="tts-voice">
@@ -323,12 +282,12 @@ const AccessibilityReader = () => {
             </label>
             <select
               id="tts-voice"
-              className="w-full border border-gray-300 dark:border-gray-600 rounded p-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm sm:text-base"
+              className="w-full border rounded p-1 mb-3 dark:bg-gray-700 dark:text-white"
               value={settings.tts.voice}
               onChange={(e) =>
                 setSettings({ ...settings, tts: { ...settings.tts, voice: e.target.value } })
               }
-              aria-label="Select text-to-speech voice"
+              aria-label="Select TTS voice"
             >
               {voices.map((v, idx) => (
                 <option key={idx} value={v.name}>
@@ -340,44 +299,36 @@ const AccessibilityReader = () => {
           <div className="flex flex-wrap gap-2 mb-3">
             <button
               onClick={handleSpeak}
-              className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 min-h-[44px] text-sm sm:text-base"
+              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
               aria-label="Speak page or highlighted text"
-              disabled={speaking && !isPaused}
             >
               ▶ Speak
             </button>
             <button
               onClick={handleReadHighlighted}
-              className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 min-h-[44px] text-sm sm:text-base"
+              className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
               aria-label="Read highlighted text"
-              disabled={speaking && !isPaused}
             >
               📖 Read Highlighted
             </button>
             <button
               onClick={handlePause}
-              className="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:focus:ring-yellow-400 min-h-[44px] text-sm sm:text-base"
-              aria-label={isPaused ? 'Resume reading' : 'Pause reading'}
-              aria-pressed={isPaused}
-              disabled={!speaking || isPaused}
+              className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              aria-label="Pause reading"
             >
-              {isPaused ? '🔄 Resume' : '⏸ Pause'}
+              ⏸ Pause
             </button>
             <button
-              ref={resumeButtonRef}
               onClick={handleResume}
-              className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[44px] text-sm sm:text-base"
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
               aria-label="Resume reading"
-              disabled={!isPaused}
             >
               🔄 Resume
             </button>
             <button
-              ref={stopButtonRef}
               onClick={handleStop}
-              className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 min-h-[44px] text-sm sm:text-base"
+              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               aria-label="Stop reading"
-              disabled={!speaking && !isPaused}
             >
               ⏹ Stop
             </button>
@@ -394,10 +345,10 @@ const AccessibilityReader = () => {
                 onChange={(e) => {
                   const newRate = parseFloat(e.target.value);
                   setSettings({ ...settings, tts: { ...settings.tts, rate: newRate } });
-                  if (isPaused) resumeFromIndex(newRate, settings.tts.volume);
+                  resumeFromIndex(newRate, settings.tts.volume);
                 }}
-                className="w-full accent-blue-600 dark:accent-blue-400"
-                aria-label="Adjust text-to-speech speed"
+                className="w-full"
+                aria-label="Adjust TTS speed"
               />
             </label>
             <label className="block text-sm text-gray-900 dark:text-gray-100">
@@ -411,26 +362,22 @@ const AccessibilityReader = () => {
                 onChange={(e) => {
                   const newVolume = parseFloat(e.target.value);
                   setSettings({ ...settings, tts: { ...settings.tts, volume: newVolume } });
-                  if (isPaused) resumeFromIndex(settings.tts.rate, newVolume);
+                  resumeFromIndex(settings.tts.rate, newVolume);
                 }}
-                className="w-full accent-blue-600 dark:accent-blue-400"
-                aria-label="Adjust text-to-speech volume"
+                className="w-full"
+                aria-label="Adjust TTS volume"
               />
             </label>
           </div>
-          <div
-            className="text-sm text-gray-600 dark:text-gray-400"
-            role="status"
-            aria-live="polite"
-          >
+          <p className="text-xs text-gray-600 dark:text-gray-400">
             Status: {speaking ? (isPaused ? 'Paused' : 'Speaking') : 'Idle'}
-          </div>
+          </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             Shortcuts: <br />
-            <kbd>Alt+R</kbd> Speak page/highlight <br />
-            <kbd>Alt+H</kbd> Read highlighted only <br />
-            <kbd>Alt+P</kbd> Pause/Resume <br />
-            <kbd>Alt+S</kbd> Stop
+            <strong>Alt+R</strong> Speak page/highlight <br />
+            <strong>Alt+H</strong> Read highlighted only <br />
+            <strong>Alt+P</strong> Pause/Resume <br />
+            <strong>Alt+S</strong> Stop
           </p>
         </div>
       )}

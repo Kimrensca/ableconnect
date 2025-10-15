@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-    import toast from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
     const useTextToSpeech = () => {
       const [speaking, setSpeaking] = useState(false);
@@ -8,58 +8,43 @@ import { useState, useEffect, useRef } from 'react';
       const isVoiceInitialized = useRef(false);
 
       useEffect(() => {
-        const loadVoices = () => {
-          const availableVoices = window.speechSynthesis.getVoices();
-          setVoices(availableVoices);
-          if (availableVoices.length && !isVoiceInitialized.current) {
-            isVoiceInitialized.current = true;
-            setSettings((prev) => ({
-              ...prev,
-              tts: { ...prev.tts, voice: availableVoices[0]?.name || '' },
-            }));
-          }
-        };
-        loadVoices();
-        window.speechSynthesis.onvoiceschanged = loadVoices;
+  const loadVoices = () => {
+    const availableVoices = window.speechSynthesis.getVoices();
+    setVoices(availableVoices);
+    if (availableVoices.length && !isVoiceInitialized.current) {
+      isVoiceInitialized.current = true;
+      setSettings((prev) => ({
+        ...prev,
+        tts: { ...prev.tts, voice: availableVoices[0]?.name || '' },
+      }));
+    }
+  };
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
 
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setSettings({ tts: { voice: '', rate: 1, volume: 1 } });
-          return;
-        }
+  const fetchSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
 
-        const fetchSettings = async () => {
-          try {
-            const res = await fetch('http://localhost:5000/api/settings', {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            });
-            if (!res.ok) {
-              const errorText = await res.text();
-              throw new Error(`HTTP ${res.status}: ${errorText}`);
-            }
-            const data = await res.json();
-            setSettings({ tts: data.tts || { voice: '', rate: 1, volume: 1 } });
-          } catch (err) {
-            toast.error(`Failed to load TTS settings: ${err.message}`, {
-              duration: 4000,
-              position: 'top-center',
-              style: {
-                background: '#fef3f3',
-                color: '#b91c1c',
-                border: '1px solid #b91c1c',
-              },
-            });
-          }
-        };
-        fetchSettings();
+      const res = await fetch('http://localhost:5000/api/settings', { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSettings({ tts: data.tts || { voice: '', rate: 1, volume: 1 } });
+    } catch (err) {
+      console.error('Failed to load TTS settings:', err.message);
+    }
+  };
 
-        return () => {
-          window.speechSynthesis.onvoiceschanged = null;
-        };
-      }, []);
+  fetchSettings();
+
+  return () => {
+    window.speechSynthesis.onvoiceschanged = null;
+  };
+}, []);
+
+
 
       const speak = (text) => {
         if (!window.speechSynthesis) {
