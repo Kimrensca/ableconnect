@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,10 +8,6 @@ const EmployerDashboard = () => {
   const token = localStorage.getItem('token');
   const username = localStorage.getItem('username') || 'Employer';
 
-  const [selectedApplication, setSelectedApplication] = useState(null);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [reviewNotes, setReviewNotes] = useState('');
-  const [newStatus, setNewStatus] = useState('');
   const [jobs, setJobs] = useState([]);
   const [activeTab, setActiveTab] = useState('postedJobs');
   const [applicantsMap, setApplicantsMap] = useState({});
@@ -36,22 +31,24 @@ const EmployerDashboard = () => {
   const [newAccommodation, setNewAccommodation] = useState('');
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [reviewNotes, setReviewNotes] = useState('');
+
+  // Filter for Applications Tab
+  const [appFilter, setAppFilter] = useState('pending');
+
   const fetchJobs = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch('http://localhost:5000/api/jobs/employer', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to fetch jobs`);
-      }
+      if (!res.ok) throw new Error(`Failed to fetch jobs: ${await res.text()}`);
       const jobsData = await res.json();
-      if (!Array.isArray(jobsData)) {
-        console.error('Unexpected jobs data:', jobsData);
-        throw new Error('Invalid jobs data format');
-      }
-      setJobs(jobsData);
+      setJobs(Array.isArray(jobsData) ? jobsData : []);
 
       let totalApps = 0;
       const newApplicantsMap = {};
@@ -59,33 +56,26 @@ const EmployerDashboard = () => {
         const appRes = await fetch(`http://localhost:5000/api/applications/employer/${job._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!appRes.ok) {
-          const errorData = await appRes.json();
-          throw new Error(errorData.message || `HTTP ${appRes.status}: Failed to fetch applications for job ${job._id}`);
-        }
+        if (!appRes.ok) continue;
         const apps = await appRes.json();
         totalApps += apps.length;
-        newApplicantsMap[job._id] = apps;
+        newApplicantsMap[job._id] = Array.isArray(apps) ? apps : [];
       }
       setApplicantsMap(newApplicantsMap);
       setTotalApplications(totalApps);
     } catch (err) {
-      console.error('Error fetching jobs:', err);
       toast.error(err.message || 'Failed to fetch jobs');
     }
   }, [token]);
 
   const fetchProfile = useCallback(async () => {
     if (!token) return;
+    setIsLoadingProfile(true);
     try {
-      setIsLoadingProfile(true);
       const res = await fetch('http://localhost:5000/api/applications/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to fetch profile`);
-      }
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setCompanyProfile({
         username: data.username || '',
@@ -100,138 +90,78 @@ const EmployerDashboard = () => {
         accommodations: Array.isArray(data.accommodations) ? data.accommodations : [],
         accommodationsAvailable: data.accommodationsAvailable || false,
       });
-      if (data.username) localStorage.setItem('username', data.username);
-    } catch (error) {
-      console.error('Error fetching company profile:', error);
-      toast.error(error.message || 'Failed to fetch company profile');
+    } catch (err) {
+      toast.error(err.message || 'Failed to fetch profile');
     } finally {
       setIsLoadingProfile(false);
     }
   }, [token]);
 
   const handleSaveProfile = async () => {
-    if (!token) {
-      toast.error('No authentication token found.');
+    if (!companyProfile.username.trim() || !companyProfile.companyName.trim()) {
+      toast.error('Username and Company Name are required.');
       return;
     }
-    if (!companyProfile.username.trim()) {
-      toast.error('Username is required.');
-      return;
-    }
-    if (!companyProfile.companyName.trim()) {
-      toast.error('Company Name is required.');
-      return;
-    }
-    const formDataToSend = new FormData();
-    formDataToSend.append('username', companyProfile.username.trim());
-    formDataToSend.append('companyName', companyProfile.companyName.trim());
-    formDataToSend.append('email', companyProfile.email.trim());
-    formDataToSend.append('phone', companyProfile.phone.trim());
-    formDataToSend.append('location', companyProfile.location.trim());
-    formDataToSend.append('website', companyProfile.website.trim());
-    formDataToSend.append('industry', companyProfile.industry.trim());
-    formDataToSend.append('size', companyProfile.size.trim());
-    formDataToSend.append('inclusionStatement', companyProfile.inclusionStatement.trim());
-    formDataToSend.append('accommodations', JSON.stringify(companyProfile.accommodations));
-    formDataToSend.append('accommodationsAvailable', companyProfile.accommodationsAvailable.toString());
+    const formData = new FormData();
+    Object.keys(companyProfile).forEach(key => {
+      if (key === 'accommodations') {
+        formData.append(key, JSON.stringify(companyProfile[key]));
+      } else {
+        formData.append(key, companyProfile[key]);
+      }
+    });
 
     try {
       setIsLoadingProfile(true);
       const res = await fetch('http://localhost:5000/api/applications/profile', {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
-        body: formDataToSend,
+        body: formData,
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to save profile`);
-      }
-      const data = await res.json();
-      setCompanyProfile({
-        username: data.username || '',
-        companyName: data.companyName || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        location: data.location || '',
-        website: data.website || '',
-        industry: data.industry || '',
-        size: data.size || '',
-        inclusionStatement: data.inclusionStatement || '',
-        accommodations: data.accommodations || [],
-        accommodationsAvailable: data.accommodationsAvailable || false,
-      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success('Profile updated!');
       setModalOpen(null);
-      setNewAccommodation('');
-      localStorage.setItem('username', data.username || '');
-      toast.success('Profile updated successfully!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error(error.message || 'Failed to save profile');
+      localStorage.setItem('username', companyProfile.username);
+    } catch (err) {
+      toast.error(err.message);
     } finally {
       setIsLoadingProfile(false);
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      localStorage.clear();
-      navigate('/login');
-    }
-  };
-
   const handleCloseJob = async (jobId, newStatus = 'Closed') => {
-    if (!token) return;
     try {
       const res = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to update job status`);
-      }
-      toast.success(`Job ${newStatus.toLowerCase()} successfully!`);
+      if (!res.ok) throw new Error(await res.text());
+      toast.success(`Job ${newStatus.toLowerCase()}!`);
       fetchJobs();
     } catch (err) {
-      console.error('Error updating job status:', err);
-      toast.error(err.message || 'Failed to update job status');
+      toast.error(err.message);
     }
   };
 
   const handleDeleteJob = async (jobId) => {
-    if (!token) return;
-    if (!window.confirm('Are you sure you want to delete this job?')) return;
+    if (!window.confirm('Delete this job?')) return;
     try {
       const res = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to delete job`);
-      }
-      toast.success('Job deleted successfully!');
+      if (!res.ok) throw new Error(await res.text());
+      toast.success('Job deleted');
       fetchJobs();
     } catch (err) {
-      console.error('Error deleting job:', err);
-      toast.error(err.message || 'Failed to delete job');
+      toast.error(err.message);
     }
   };
 
-  const handleEditJob = (jobId) => {
-    navigate(`/edit-job/${jobId}`);
-  };
+  const handleEditJob = (jobId) => navigate(`/edit-job/${jobId}`);
 
   const handleViewApplicants = async (jobId) => {
-    if (!jobId) {
-      console.error('No jobId provided for viewing applicants');
-      toast.error('Unable to view applicants: Invalid job ID');
-      return;
-    }
     try {
       const res = await axios.get(`http://localhost:5000/api/applications/employer/${jobId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -239,449 +169,282 @@ const EmployerDashboard = () => {
       setSelectedJobApplicants(res.data);
       setApplicantsModalOpen(true);
     } catch (err) {
-      console.error('Error fetching applications:', err);
       toast.error(err.response?.data?.message || 'Failed to load applicants');
     }
   };
 
   const updateStatus = async (applicationId, status, jobId, notes = '') => {
-    if (!token) return;
     try {
       const res = await fetch(`http://localhost:5000/api/applications/${applicationId}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, notes }),
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: Failed to update status`);
-      }
-      toast.success('Status updated successfully!');
-      await handleViewApplicants(jobId); // Refresh applicants in modal
-      fetchJobs(); // Update applicantsMap for Applications tab
+      if (!res.ok) throw new Error(await res.text());
+      toast.success('Status updated');
+      fetchJobs(); // Refresh all
+      setReviewModalOpen(false);
     } catch (err) {
-      console.error('Error updating status:', err);
-      toast.error(err.message || 'Failed to update status');
+      toast.error(err.message);
     }
   };
 
   const handleViewFile = async (type, filename) => {
-    if (!token || !filename) {
-      toast.error('Authentication token or file missing');
-      return;
-    }
     try {
       const url = `http://localhost:5000/api/applications/${type}/${filename}?view=true`;
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
-
-      const fileExt = filename.split('.').pop().toLowerCase();
-      const mimeTypes = {
-        pdf: 'application/pdf',
-        doc: 'application/msword',
-        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      };
-      const mimeType = mimeTypes[fileExt] || 'application/octet-stream';
-      const fileURL = window.URL.createObjectURL(new Blob([response.data], { type: mimeType }));
-      const link = document.createElement('a');
-      link.href = fileURL;
-      link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(fileURL);
-    } catch (err) {
-      console.error(`Error viewing ${type}:`, err);
-      toast.error(err.response?.data?.message || `Failed to view ${type}`);
+      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' });
+      const blob = new Blob([res.data], { type: res.data.type });
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch {
+      toast.error(`Failed to view ${type}`);
     }
   };
 
   const handleDownloadFile = async (type, filename) => {
-    if (!token || !filename) {
-      toast.error('Authentication token or file missing');
-      return;
-    }
     try {
       const url = `http://localhost:5000/api/applications/${type}/${filename}`;
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
-
-      const fileURL = window.URL.createObjectURL(new Blob([response.data]));
+      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' });
+      const urlBlob = URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
-      link.href = fileURL;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
+      link.href = urlBlob;
+      link.download = filename;
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(fileURL);
-    } catch (err) {
-      console.error(`Error downloading ${type}:`, err);
-      toast.error(err.response?.data?.message || `Failed to download ${type}`);
+      URL.revokeObjectURL(urlBlob);
+    } catch {
+      toast.error(`Failed to download ${type}`);
     }
   };
 
-  // Count new applications (less than 7 days old)
   const newApplicationsCount = Object.values(applicantsMap)
     .flat()
-    .filter((app) => Date.now() - new Date(app.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000)
+    .filter(app => Date.now() - new Date(app.createdAt) < 7 * 24 * 60 * 60 * 1000)
     .length;
 
+  // All Applications (flattened)
+  const allApplications = Object.values(applicantsMap).flat();
+
+  const pendingApps = allApplications.filter(a => !a.status || a.status === 'Pending');
+  const reviewedApps = allApplications.filter(a => a.status && a.status !== 'Pending');
+
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
-      return;
+    if (!token) navigate('/login');
+    else {
+      fetchJobs();
+      fetchProfile();
+      const interval = setInterval(fetchJobs, 30000);
+      return () => clearInterval(interval);
     }
-    fetchJobs();
-    fetchProfile();
-    const interval = setInterval(fetchJobs, 30000);
-    return () => clearInterval(interval);
   }, [fetchJobs, fetchProfile, token, navigate]);
+
+  // === Reusable Application Card ===
+  const ApplicationReviewCard = ({ app, jobTitle }) => {
+    const isNew = Date.now() - new Date(app.createdAt) < 7 * 24 * 60 * 60 * 1000;
+
+    return (
+      <li className="border p-4 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="font-medium">{app.applicantId?.email || 'Unknown'}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Job: {jobTitle}</p>
+            <p className="text-xs text-gray-500">Applied: {new Date(app.createdAt).toLocaleDateString()}</p>
+          </div>
+          <div className="flex gap-1">
+            {isNew && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">New</span>}
+            <span className={`text-xs px-2 py-1 rounded ${
+              app.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+              app.status === 'Accepted' ? 'bg-green-100 text-green-800' :
+              app.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+              app.status === 'Interview Scheduled' ? 'bg-blue-100 text-blue-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {app.status || 'Pending'}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setSelectedApplication(app);
+            setNewStatus(app.status || 'Pending');
+            setReviewNotes(app.feedback || '');
+            setReviewModalOpen(true);
+          }}
+          className="mt-3 text-sm text-purple-600 dark:text-purple-400 hover:underline"
+        >
+          Review Application →
+        </button>
+      </li>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      {/* Header */}
       <nav className="flex justify-between items-center px-6 py-4 bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700">
-        <div className="flex gap-4 items-center">
-          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg" aria-label="Home">
-            Home
-          </Link>
-          <Link to="/resources" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg" aria-label="Resources">
-            Resources
-          </Link>
+        <div className="flex gap-4">
+          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Home</Link>
+          <Link to="/resources" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Resources</Link>
         </div>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 dark:bg-red-600 text-white px-4 py-2 rounded hover:bg-red-600 dark:hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
-          aria-label="Logout"
-        >
+        <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
           Logout
         </button>
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">Welcome, {username} 👋</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Manage your job listings and company profile here.</p>
+        <h1 className="text-3xl font-bold mb-2">Welcome, {username}</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Manage your jobs and company profile.</p>
 
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-          <div className="p-6 bg-gradient-to-br from-blue-100 to-white dark:from-blue-900 dark:to-gray-800 rounded-lg shadow-lg text-center">
+          <div className="p-6 bg-gradient-to-br from-blue-100 to-white dark:from-blue-900 dark:to-gray-800 rounded-lg shadow text-center">
             <h2 className="text-lg font-semibold text-blue-800 dark:text-blue-200">Active Jobs</h2>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{jobs.filter((j) => j.status === 'Active').length}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{jobs.filter(j => j.status === 'Active').length}</p>
           </div>
-          <div className="p-6 bg-gradient-to-br from-green-100 to-white dark:from-green-900 dark:to-gray-800 rounded-lg shadow-lg text-center">
+          <div className="p-6 bg-gradient-to-br from-green-100 to-white dark:from-green-900 dark:to-gray-800 rounded-lg shadow text-center">
             <h2 className="text-lg font-semibold text-green-800 dark:text-green-200">Total Applications</h2>
             <p className="text-2xl font-bold text-green-600 dark:text-green-400">{totalApplications}</p>
           </div>
-          <div className="p-6 bg-gradient-to-br from-yellow-100 to-white dark:from-yellow-900 dark:to-gray-800 rounded-lg shadow-lg text-center">
+          <div className="p-6 bg-gradient-to-br from-yellow-100 to-white dark:from-yellow-900 dark:to-gray-800 rounded-lg shadow text-center">
             <h2 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">New Applications</h2>
             <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{newApplicationsCount}</p>
           </div>
         </div>
 
-        <Link
-          to="/post-job"
-          className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-3 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 mb-12 inline-block"
-          aria-label="Post a New Job"
-        >
+        <Link to="/post-job" className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 mb-8">
           Post a New Job
         </Link>
 
-        <div className="mb-8">
-          <div className="flex space-x-4 border-b pb-2 mb-4 border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => {
-                setActiveTab('postedJobs');
-                fetchJobs();
-              }}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'postedJobs'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400`}
-              aria-label="View Posted Jobs"
-            >
-              Posted Jobs
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('applications');
-                fetchJobs();
-              }}
-              className={`px-4 py-2 rounded-t relative ${
-                activeTab === 'applications'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400`}
-              aria-label={`View Applications (${newApplicationsCount} new)`}
-            >
-              Applications
-              {newApplicationsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 dark:bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {newApplicationsCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('companyProfile');
-                fetchProfile();
-                setModalOpen(null);
-              }}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'companyProfile'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400`}
-              aria-label="View Company Profile"
-            >
-              Company Profile
-            </button>
-          </div>
+        {/* Tabs */}
+        <div className="flex space-x-4 border-b pb-2 mb-6 border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('postedJobs')}
+            className={`px-4 py-2 rounded-t ${activeTab === 'postedJobs' ? 'bg-blue-600 text-white' : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'}`}
+          >
+            Posted Jobs
+          </button>
+          <button
+            onClick={() => { setActiveTab('applications'); setAppFilter('pending'); }}
+            className={`px-4 py-2 rounded-t relative ${activeTab === 'applications' ? 'bg-blue-600 text-white' : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'}`}
+          >
+            Applications
+            {newApplicationsCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {newApplicationsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setActiveTab('companyProfile'); fetchProfile(); }}
+            className={`px-4 py-2 rounded-t ${activeTab === 'companyProfile' ? 'bg-blue-600 text-white' : 'text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400'}`}
+          >
+            Company Profile
+          </button>
         </div>
 
-        <div>
-          {activeTab === 'postedJobs' && (
-            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-10 border border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Your Job Listings</h2>
-              {jobs.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-lg">You haven't posted any jobs yet.</p>
-              ) : (
-                <ul className="space-y-4">
-                  {jobs.map((job) => (
-                    <li
-                      key={job._id}
-                      className="p-5 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
-                      role="article"
-                      aria-label={`Job listing ${job.title}`}
-                    >
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                        <div>
-                          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">{job.title}</h3>
-                          <p className="text-gray-600 dark:text-gray-400 text-sm">
-                            {job.location} • {job.type} •{' '}
-                            <span
-                              className={`ml-2 px-2 py-1 rounded text-xs ${
-                                job.status === 'Active'
-                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                  : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100'
-                              }`}
-                            >
-                              {job.status}
-                            </span>
-                            {job.disabilityFriendly && (
-                              <span className="ml-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-2 py-1 rounded">
-                                Disability-Friendly
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            Posted on: {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'N/A'}
-                          </p>
-                          <span className="inline-block mt-2 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-semibold px-2 py-1 rounded-full">
-                            {applicantsMap[job._id]?.length || 0} Applicants
-                          </span>
-                        </div>
-                        <div className="flex flex-col space-y-2 mt-3 sm:mt-0">
-                          {job.status === 'Active' && (
-                            <button
-                              onClick={() => handleCloseJob(job._id)}
-                              className="text-yellow-700 dark:text-yellow-300 border border-yellow-700 dark:border-yellow-600 px-3 py-1 rounded hover:bg-yellow-50 dark:hover:bg-yellow-900 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:focus:ring-yellow-400"
-                              aria-label={`Close job ${job.title}`}
-                            >
-                              Close Job
-                            </button>
-                          )}
-                          {job.status === 'Closed' && (
-                            <button
-                              onClick={() => handleCloseJob(job._id, 'Active')}
-                              className="text-green-700 dark:text-green-300 border border-green-700 dark:border-green-600 px-3 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-                              aria-label={`Reopen job ${job.title}`}
-                            >
-                              Reopen Job
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleEditJob(job._id)}
-                            className="text-blue-700 dark:text-blue-400 border border-blue-700 dark:border-blue-400 px-3 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                            aria-label={`Edit job ${job.title}`}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteJob(job._id)}
-                            className="text-red-700 dark:text-red-400 border border-red-700 dark:border-red-400 px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400"
-                            aria-label={`Delete job ${job.title}`}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            onClick={() => handleViewApplicants(job._id)}
-                            className="text-purple-700 dark:text-purple-400 border border-purple-700 dark:border-purple-400 px-3 py-1 rounded hover:bg-purple-50 dark:hover:bg-purple-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
-                            aria-label={`View applicants for ${job.title}`}
-                          >
-                            View Applicants
-                          </button>
-                        </div>
-                      </div>
-                      {applicantsModalOpen && selectedJobApplicants && (
-                        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70 flex justify-center items-center">
-                          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-                            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Applicants for {job.title}</h3>
-                            {selectedJobApplicants.length > 0 ? (
-                              <ul className="space-y-2">
-                                {selectedJobApplicants.map((app) => (
-                                  <li
-                                    key={app._id}
-                                    className="p-3 border border-gray-200 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
-                                    role="article"
-                                    aria-label={`Application from ${app.applicantId?.email || 'Unknown Applicant'}`}
-                                  >
-                                    <p className="text-gray-800 dark:text-gray-100">
-                                      <strong>Applicant:</strong> {app.applicantId?.email || 'Unknown email'}
-                                    </p>
-                                    <p className="text-gray-800 dark:text-gray-100">
-                                      <strong>Applied on:</strong> {new Date(app.createdAt).toLocaleDateString()}
-                                    </p>
-                                    <p className="text-gray-800 dark:text-gray-100">
-                                      <strong>Status:</strong>{' '}
-                                      <span
-                                        className={`px-2 py-1 rounded text-xs ${
-                                          app.status === 'Pending'
-                                            ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                                            : app.status === 'Accepted'
-                                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                            : app.status === 'Rejected'
-                                            ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                                            : app.status === 'Interview Scheduled'
-                                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-                                            : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100'
-                                        }`}
-                                      >
-                                        {app.status || 'Pending'}
-                                      </span>
-                                    </p>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedApplication(app);
-                                        setNewStatus(app.status || 'Pending');
-                                        setReviewNotes(app.feedback || '');
-                                        setReviewModalOpen(true);
-                                        setApplicantsModalOpen(false);
-                                      }}
-                                      className="mt-2 text-purple-700 dark:text-purple-400 border border-purple-700 dark:border-purple-400 px-3 py-1 rounded hover:bg-purple-50 dark:hover:bg-purple-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
-                                      aria-label={`Review application from ${app.applicantId?.email || 'Unknown Applicant'}`}
-                                    >
-                                      Review
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-gray-500 dark:text-gray-400">No applicants for this job.</p>
-                            )}
-                            <div className="mt-4 flex justify-end space-x-2">
-                              <button
-                                onClick={() => setApplicantsModalOpen(false)}
-                                className="text-gray-600 dark:text-gray-400 border border-gray-600 dark:border-gray-500 px-3 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400"
-                                aria-label="Close applicants modal"
-                              >
-                                Close
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'applications' && (
-            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-10 border border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Applications Received</h2>
-              {Object.keys(applicantsMap).length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  No applications fetched yet. Click "View Applicants" on a job to load them.
-                </p>
-              ) : (
-                Object.entries(applicantsMap).map(([jobId, apps]) => {
-                  const job = jobs.find((j) => j._id === jobId);
-                  if (!job) return null;
-                  return (
-                    <div key={jobId} className="mb-6 border border-gray-200 dark:border-gray-600 rounded-lg p-4 shadow bg-gray-50 dark:bg-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{job.title}</h3>
-                      {apps && apps.length > 0 ? (
-                        <ul className="space-y-2">
-                          {apps.map((app) => {
-                            const isNew =
-                              Date.now() - new Date(app.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
-                            return (
-                              <li
-                                key={app._id}
-                                className="p-3 border border-gray-200 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors duration-200"
-                                role="article"
-                                aria-label={`Application for ${job.title}`}
-                              >
-                                <p className="text-gray-800 dark:text-gray-100">
-                                  <strong>Applicant:</strong> {app.applicantId?.email || 'Unknown email'}
-                                </p>
-                                <p className="text-gray-800 dark:text-gray-100">
-                                  <strong>Applied on:</strong> {new Date(app.createdAt).toLocaleDateString()}
-                                </p>
-                                <div className="flex space-x-2 mt-2">
-                                  {isNew && (
-                                    <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded text-xs">
-                                      New
-                                    </span>
-                                  )}
-                                  <span
-                                    className={`px-2 py-1 rounded text-xs ${
-                                      app.status === 'Pending'
-                                        ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                                        : app.status === 'Accepted'
-                                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                        : app.status === 'Rejected'
-                                        ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                                        : app.status === 'Interview Scheduled'
-                                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100'
-                                    }`}
-                                  >
-                                    {app.status || 'Pending'}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setNewStatus(app.status || 'Pending');
-                                      setReviewNotes(app.feedback || '');
-                                      setReviewModalOpen(true);
-                                    }}
-                                    className="text-purple-700 dark:text-purple-400 border border-purple-700 dark:border-purple-400 px-3 py-1 rounded hover:bg-purple-50 dark:hover:bg-purple-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
-                                    aria-label={`Review application for ${job.title}`}
-                                  >
-                                    Review
-                                  </button>
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : (
-                        <p className="text-gray-500 dark:text-gray-400">No applications for this job.</p>
-                      )}
+        {/* === POSTED JOBS TAB === */}
+        {activeTab === 'postedJobs' && (
+          <div className="space-y-4">
+            {jobs.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400">No jobs posted yet.</p>
+            ) : (
+              jobs.map(job => (
+                <div key={job._id} className="p-5 border rounded-lg bg-white dark:bg-gray-800 shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-semibold">{job.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {job.location} • {job.type} •
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${job.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-300 text-gray-700'}`}>
+                          {job.status}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-500">Posted: {new Date(job.createdAt).toLocaleDateString()}</p>
+                      <span className="inline-block mt-2 bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                        {applicantsMap[job._id]?.length || 0} Applicants
+                      </span>
                     </div>
-                  );
-                })
-              )}
+                    <div className="flex flex-wrap gap-2">
+                      {job.status === 'Active' && (
+                        <button onClick={() => handleCloseJob(job._id)} className="text-xs border border-yellow-600 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-50">
+                          Close
+                        </button>
+                      )}
+                      {job.status === 'Closed' && (
+                        <button onClick={() => handleCloseJob(job._id, 'Active')} className="text-xs border border-green-600 text-green-700 px-2 py-1 rounded hover:bg-green-50">
+                          Reopen
+                        </button>
+                      )}
+                      <button onClick={() => handleEditJob(job._id)} className="text-xs border border-blue-600 text-blue-700 px-2 py-1 rounded hover:bg-blue-50">
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteJob(job._id)} className="text-xs border border-red-600 text-red-700 px-2 py-1 rounded hover:bg-red-50">
+                        Delete
+                      </button>
+                      <button onClick={() => handleViewApplicants(job._id)} className="text-xs border border-purple-600 text-purple-700 px-2 py-1 rounded hover:bg-purple-50">
+                        View Applicants
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* === APPLICATIONS TAB === */}
+        {activeTab === 'applications' && (
+          <div>
+            <div className="flex space-x-3 mb-5">
+              <button
+                onClick={() => setAppFilter('pending')}
+                className={`px-4 py-1.5 rounded font-medium text-sm ${appFilter === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300'}`}
+              >
+                Pending ({pendingApps.length})
+              </button>
+              <button
+                onClick={() => setAppFilter('reviewed')}
+                className={`px-4 py-1.5 rounded font-medium text-sm ${appFilter === 'reviewed' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300'}`}
+              >
+                Reviewed ({reviewedApps.length})
+              </button>
             </div>
-          )}
+
+            {appFilter === 'pending' && (
+              <ul className="space-y-3">
+                {pendingApps.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic">No pending applications.</p>
+                ) : (
+                  pendingApps.map(app => {
+                    const job = jobs.find(j => j._id === app.jobId?._id);
+                    return <ApplicationReviewCard key={app._id} app={app} jobTitle={job?.title || 'Unknown Job'} />;
+                  })
+                )}
+              </ul>
+            )}
+
+            {appFilter === 'reviewed' && (
+              <div className="space-y-5">
+                {['Accepted', 'Rejected', 'Interview Scheduled'].map(status => {
+                  const list = reviewedApps.filter(a => a.status === status);
+                  if (list.length === 0) return null;
+                  return (
+                    <details key={status} open className="border rounded-lg bg-gray-50 dark:bg-gray-800 p-4">
+                      <summary className="font-semibold cursor-pointer text-lg mb-2">
+                        {status} ({list.length})
+                      </summary>
+                      <ul className="space-y-3 ml-4">
+                        {list.map(app => {
+                          const job = jobs.find(j => j._id === app.jobId?._id);
+                          return <ApplicationReviewCard key={app._id} app={app} jobTitle={job?.title || 'Unknown Job'} />;
+                        })}
+                      </ul>
+                    </details>
+                  );
+                })}
+                {reviewedApps.length === 0 && <p className="text-gray-600 italic">No reviewed applications yet.</p>}
+              </div>
+            )}
+          </div>
+        )}
 
           {activeTab === 'companyProfile' && (
             <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-10 border border-gray-200 dark:border-gray-700">
@@ -1073,129 +836,154 @@ const EmployerDashboard = () => {
           )}
 
           {reviewModalOpen && selectedApplication && (
-            <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70 flex justify-center items-center">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Review Application</h3>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Applicant:</strong> {selectedApplication.applicantId?.email || 'Unknown email'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Job Title:</strong> {selectedApplication.jobId?.title || 'Unknown'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Name:</strong> {selectedApplication.name || 'N/A'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Email:</strong> {selectedApplication.email || 'N/A'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Phone:</strong> {selectedApplication.phone || 'N/A'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Bio:</strong> {selectedApplication.bio || 'N/A'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Background:</strong></p>
-                {Array.isArray(selectedApplication.background) && selectedApplication.background.length > 0 ? (
-                  <ul className="list-disc pl-5 mb-4 text-gray-800 dark:text-gray-100">
-                    {selectedApplication.background.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mb-4 text-gray-800 dark:text-gray-100">{selectedApplication.background || 'N/A'}</p>
-                )}
-                <p className="text-gray-800 dark:text-gray-100"><strong>Experience:</strong></p>
-                {Array.isArray(selectedApplication.experience) && selectedApplication.experience.length > 0 ? (
-                  <ul className="list-disc pl-5 mb-4 text-gray-800 dark:text-gray-100">
-                    {selectedApplication.experience.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mb-4 text-gray-800 dark:text-gray-100">{selectedApplication.experience || 'N/A'}</p>
-                )}
-                <p className="text-gray-800 dark:text-gray-100"><strong>Cover Letter:</strong> {selectedApplication.coverLetter || 'N/A'}</p>
-                <p className="text-gray-800 dark:text-gray-100"><strong>Accommodation Needs:</strong> {selectedApplication.accommodation || 'N/A'}</p>
-                <div className="mt-4">
-                  <p className="text-gray-800 dark:text-gray-100"><strong>Resume:</strong></p>
-                  {selectedApplication.resume ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewFile('resume', selectedApplication.resume)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="View resume"
-                      >
-                        View Resume
-                      </button>
-                      <button
-                        onClick={() => handleDownloadFile('resume', selectedApplication.resume)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="Download resume"
-                      >
-                        Download Resume
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400">No resume uploaded</p>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <p className="text-gray-800 dark:text-gray-100"><strong>Certificate:</strong></p>
-                  {selectedApplication.certificate ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewFile('certificate', selectedApplication.certificate)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="View certificate"
-                      >
-                        View Certificate
-                      </button>
-                      <button
-                        onClick={() => handleDownloadFile('certificate', selectedApplication.certificate)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="Download certificate"
-                      >
-                        Download Certificate
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400">No certificate uploaded</p>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-800 dark:text-gray-300">Status</label>
-                  <select
-                    value={newStatus}
-                    onChange={(e) => setNewStatus(e.target.value)}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                    aria-label="Application status"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Accepted">Accepted</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Interview Scheduled">Interview Scheduled</option>
-                  </select>
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-800 dark:text-gray-300">Review Notes</label>
-                  <textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                    rows={4}
-                    aria-label="Review notes"
-                  />
-                </div>
-                <div className="mt-6 flex justify-end space-x-2">
-                  <button
-                    onClick={() => updateStatus(selectedApplication._id, newStatus, selectedApplication.jobId._id, reviewNotes)}
-                    className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-sm"
-                    aria-label="Save application status"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={() => setReviewModalOpen(false)}
-                    className="bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-500 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 text-sm"
-                    aria-label="Cancel reviewing application"
-                  >
-                    Cancel
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+              <h3 className="text-xl font-bold mb-4">Review Application</h3>
+              <p><strong>Applicant:</strong> {selectedApplication.applicantId?.email}</p>
+              <p><strong>Job:</strong> {selectedApplication.jobId?.title}</p>
+              <p><strong>Bio:</strong> {selectedApplication.bio || 'N/A'}</p>
+              <p><strong>Background:</strong> {selectedApplication.background || 'N/A'}</p>
+              <p><strong>Experience:</strong> {selectedApplication.experience || 'N/A'}</p>
+              {/* Special Needs Section */}
+{selectedApplication.hasSpecialNeed ? (
+  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
+    <p className="text-gray-800 mb-1">
+      <span className="font-medium">Has Special Need:</span> Yes
+    </p>
+    <p className="text-gray-800">
+      <span className="font-medium">Details:</span> {selectedApplication.specialNeedDetails || "Not specified"}
+    </p>
+  </div>
+) : (
+  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
+    <p className="text-gray-800">
+      <span className="font-medium">Has Special Need:</span> No
+    </p>
+  </div>
+)}
+
+
+              <div className="mt-4">
+      <p><strong>Resume:</strong></p>
+      {selectedApplication.resume ? (
+        <div className="flex space-x-2">
+          <button onClick={() => handleViewFile('resume', selectedApplication.resume)}>
+            View Resume
+          </button>
+          <button onClick={() => handleDownloadFile('resume', selectedApplication.resume)}>
+            Download Resume
+          </button>
+        </div>
+      ) : (
+        <p>No resume uploaded</p>
+      )}
+    </div>
+
+    <div className="mt-4">
+      <p><strong>Certificate:</strong></p>
+      {selectedApplication.certificate ? (
+        <div className="flex space-x-2">
+          <button onClick={() => handleViewFile('certificate', selectedApplication.certificate)}>
+            View Certificate
+          </button>
+          <button onClick={() => handleDownloadFile('certificate', selectedApplication.certificate)}>
+            Download Certificate
+          </button>
+        </div>
+      ) : (
+        <p>No certificate uploaded</p>
+      )}
+    </div>
+
+              <div className="my-3">
+                <label className="block font-medium mb-1">Status</label>
+                <select
+                  value={newStatus}
+                  onChange={e => setNewStatus(e.target.value)}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Accepted">Accepted</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Interview Scheduled">Interview Scheduled</option>
+                </select>
+              </div>
+
+              <div className="my-3">
+                <label className="block font-medium mb-1">Notes</label>
+                <textarea
+                  value={reviewNotes}
+                  onChange={e => setReviewNotes(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => updateStatus(selectedApplication._id, newStatus, selectedApplication.jobId._id, reviewNotes)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Save
+                </button>
+                <button onClick={() => setReviewModalOpen(false)} className="bg-gray-500 text-white px-4 py-2 rounded">
+                  Cancel
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* === APPLICANTS MODAL === */}
+{applicantsModalOpen && selectedJobApplicants && (
+  <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
+      <h3 className="text-xl font-bold mb-4">
+        Applicants for {jobs.find(j => j._id === selectedJobApplicants[0]?.jobId?._id)?.title || 'Job'}
+      </h3>
+      {selectedJobApplicants.length > 0 ? (
+        <ul className="space-y-2">
+          {selectedJobApplicants.map((app) => (
+            <li key={app._id} className="p-3 border rounded bg-gray-50 dark:bg-gray-700">
+              <p><strong>{app.applicantId?.email}</strong></p>
+              <p>Applied: {new Date(app.createdAt).toLocaleDateString()}</p>
+              <p>Status: <span className={`px-2 py-1 rounded text-xs ${
+                app.status === 'Accepted' ? 'bg-green-100' :
+                app.status === 'Rejected' ? 'bg-red-100' :
+                app.status === 'Interview Scheduled' ? 'bg-blue-100' :
+                'bg-yellow-100'
+              }`}>{app.status || 'Pending'}</span></p>
+              <button
+                onClick={() => {
+                  setSelectedApplication(app);
+                  setNewStatus(app.status || 'Pending');
+                  setReviewNotes(app.feedback || '');
+                  setReviewModalOpen(true);
+                  setApplicantsModalOpen(false);
+                }}
+                className="mt-2 text-purple-600 hover:underline text-sm"
+              >
+                Review
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No applicants yet.</p>
+      )}
+      <button
+        onClick={() => setApplicantsModalOpen(false)}
+        className="mt-4 bg-gray-500 text-white px-4 py-2 rounded"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
         </div>
       </div>
-    </div>
+
   );
 };
 

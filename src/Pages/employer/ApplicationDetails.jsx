@@ -100,6 +100,51 @@ export default function ApplicationDetails() {
         <p className="text-gray-600 mb-2">Name: {application.name}</p>
         <p className="text-gray-600 mb-2">Email: {application.email}</p>
         <p className="text-gray-600 mb-2">Phone: {application.phone || "N/A"}</p>
+
+{/* Education / Background */}
+{application.background && application.background.length > 0 && (
+  <div className="mt-4">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Education / Background</h3>
+    <ul className="list-disc pl-6 space-y-1 text-gray-700">
+      {application.background.map((item, index) => (
+        <li key={index}>{item}</li>
+      ))}
+    </ul>
+  </div>
+)}
+
+{/* Work Experience */}
+{application.experience && application.experience.length > 0 && (
+  <div className="mt-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">Work Experience</h3>
+    <ul className="list-disc pl-6 space-y-1 text-gray-700">
+      {application.experience.map((exp, index) => (
+        <li key={index}>{exp}</li>
+      ))}
+    </ul>
+  </div>
+)}
+
+        
+        {/* Special Needs Section */}
+{application.hasSpecialNeed ? (
+  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
+    <p className="text-gray-800 mb-1">
+      <span className="font-medium">Has Special Need:</span> Yes
+    </p>
+    <p className="text-gray-800">
+      <span className="font-medium">Details:</span> {application.specialNeedDetails || "Not specified"}
+    </p>
+  </div>
+) : (
+  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
+    <p className="text-gray-800">
+      <span className="font-medium">Has Special Need:</span> No
+    </p>
+  </div>
+)}
+
         {application.coverLetter && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Cover Letter</h3>

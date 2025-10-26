@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -38,12 +38,6 @@ const CompanyProfile = () => {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-4">
-        <Link
-          to="/browse-jobs"
-          className="text-blue-600 underline text-sm hover:text-blue-800"
-        >
-          ← Back to Job Listings
-        </Link>
         <button
           onClick={() => navigate(-1)}
           className=" ml-8 text-blue-600 dark:text-blue-400 hover:underline text-lg font-medium"

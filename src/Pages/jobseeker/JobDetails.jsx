@@ -13,6 +13,7 @@ export default function JobDetails() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  //const [hasSpecialNeed, setHasSpecialNeed] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -25,6 +26,8 @@ export default function JobDetails() {
     resume: null,
     certificate: null,
     accommodation: "",
+    hasSpecialNeed: false,
+    specialNeedDetails: "",
   });
 
   const token = localStorage.getItem("token");
@@ -89,6 +92,8 @@ export default function JobDetails() {
         resume: null,
         certificate: null,
         accommodation: "",
+        hasSpecialNeed: false,
+        specialNeedDetails: ""
       });
     } catch (err) {
       console.error(err);
@@ -378,6 +383,44 @@ export default function JobDetails() {
                     />
                   </div>
                 )}
+
+                {/* Special Needs Section */}
+<label className="flex items-center space-x-2">
+  <input
+    type="checkbox"
+    name="hasSpecialNeed"
+    checked={formData.hasSpecialNeed}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        hasSpecialNeed: e.target.checked, // ✅ actual true/false value
+      })
+    }
+    className="rounded text-blue-600"
+  />
+  <span>Do you have a special need?</span>
+</label>
+
+{/* Only show the details textarea if hasSpecialNeed is true */}
+{formData.hasSpecialNeed && (
+  <div className="mt-2">
+    <label htmlFor="specialNeedDetails" className="block text-sm font-medium text-gray-700">
+      Please describe your special need
+    </label>
+    <textarea
+      id="specialNeedDetails"
+      name="specialNeedDetails"
+      value={formData.specialNeedDetails}
+      onChange={(e) =>
+        setFormData({ ...formData, specialNeedDetails: e.target.value })
+      }
+      placeholder="e.g., Mobility impairment (uses a wheelchair)"
+      className="w-full mt-1 p-2 border rounded-md"
+    />
+  </div>
+)}
+
+
                 <div>
                   <label htmlFor="resume" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Upload Resume

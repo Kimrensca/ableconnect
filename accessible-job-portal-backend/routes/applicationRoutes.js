@@ -488,6 +488,8 @@ router.post(
         experience: normalizedExperience,
         coverLetter: coverLetter || "",
         accommodation: accommodation || "",
+        hasSpecialNeed: req.body.hasSpecialNeed,
+        specialNeedDetails: req.body.specialNeedDetails,
         resume,
         certificate,
         status: "Pending",

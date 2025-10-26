@@ -12,6 +12,9 @@ const applicationSchema = new mongoose.Schema(
     experience: { type: [String], default: [] },
     coverLetter: String,
     accommodation: String,
+    hasSpecialNeed: { type: Boolean, default: false },
+    specialNeedDetails: { type: String },
+
     resume: String, // URL or path to the resume file
     certificate: String, // Path to certificate file
     feedback: String,
