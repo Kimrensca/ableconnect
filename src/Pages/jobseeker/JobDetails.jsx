@@ -13,7 +13,7 @@ export default function JobDetails() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  //const [hasSpecialNeed, setHasSpecialNeed] = useState(false);
+  //const [needAccommodation, setNeedAccommodation] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -369,21 +369,6 @@ export default function JobDetails() {
                 </div>
                 {job.disabilityFriendly && (
                   <div className="col-span-1 md:col-span-2">
-                    <label htmlFor="accommodation" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Accommodation Needed
-                    </label>
-                    <textarea
-                      id="accommodation"
-                      name="accommodation"
-                      placeholder="Any accommodation needed?"
-                      rows={2}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
-                      onChange={handleChange}
-                      aria-label="Accommodation requirements"
-                    />
-                  </div>
-                )}
-
                 {/* Special Needs Section */}
 <label className="flex items-center space-x-2">
   <input
@@ -419,8 +404,8 @@ export default function JobDetails() {
     />
   </div>
 )}
-
-
+</div>
+)}
                 <div>
                   <label htmlFor="resume" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Upload Resume

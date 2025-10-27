@@ -388,6 +388,26 @@ const AdminDashboard = () => {
           <ul className="list-disc pl-5 text-sm">{app.experience.map((item, i) => <li key={i}>{item}</li>)}</ul>
         ) : <p className="text-sm">N/A</p>}
 
+        {/* Special Needs Section */}
+{app.hasSpecialNeed ? (
+  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
+    <p className="text-gray-800 mb-1">
+      <span className="font-medium">Has Special Need:</span> Yes
+    </p>
+    <p className="text-gray-800">
+      <span className="font-medium">Details:</span> {app.specialNeedDetails || "Not specified"}
+    </p>
+  </div>
+) : (
+  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
+    <p className="text-gray-800">
+      <span className="font-medium">Has Special Need:</span> No
+    </p>
+  </div>
+)}
+
+
         <div className="my-3 flex gap-3">
           {app.resume && (
             <button

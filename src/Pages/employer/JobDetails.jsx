@@ -7,12 +7,14 @@ import toast from "react-hot-toast";
 export default function JobDetails() {
   const { jobId } = useParams();
   const navigate = useNavigate();
+
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [needAccommodation, setNeedAccommodation] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -90,6 +92,7 @@ export default function JobDetails() {
         certificate: null,
         accommodation: "",
       });
+      setNeedAccommodation(false);
     } catch (err) {
       console.error(err);
       toast.error(
@@ -364,19 +367,44 @@ export default function JobDetails() {
                 </div>
                 {job.disabilityFriendly && (
                   <div className="col-span-1 md:col-span-2">
-                    <label htmlFor="accommodation" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Accommodation Needed
-                    </label>
-                    <textarea
-                      id="accommodation"
-                      name="accommodation"
-                      placeholder="Any accommodation needed?"
-                      rows={2}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
-                      onChange={handleChange}
-                      aria-label="Accommodation requirements"
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={needAccommodation}
+                      onChange={(e) => {
+                        setNeedAccommodation(e.target.checked);
+                        if (!e.target.checked) {
+                          setFormData((prev) => ({ ...prev, accommodation: "" }));
+                        }
+                      }}
+                      className="w-5 h-5 text-blue-600 dark:text-blue-400 rounded focus:ring-blue-500"
                     />
-                  </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Do you have any special accommodation needs?
+                    </span>
+                  </label>
+
+                  {needAccommodation && (
+                    <div className="mt-3">
+                      <label
+                        htmlFor="accommodation"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >
+                        Please describe the accommodation(s) you need
+                      </label>
+                      <textarea
+                        id="accommodation"
+                        name="accommodation"
+                        placeholder="e.g. screen-reader compatible software, flexible hours, etc."
+                        rows={3}
+                        value={formData.accommodation}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        aria-label="Accommodation needs"
+                      />
+                    </div>
+                  )}
+                </div>
                 )}
                 <div>
                   <label htmlFor="resume" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

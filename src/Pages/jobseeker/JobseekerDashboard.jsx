@@ -581,7 +581,24 @@ function JobSeekerDashboard() {
                   <p className="mb-4 text-gray-800 dark:text-gray-100">{selectedApplication.experience || "N/A"}</p>
                 )}
                 <p><strong className="text-gray-800 dark:text-gray-100">Cover Letter:</strong> {selectedApplication.coverLetter || "N/A"}</p>
-                <p><strong className="text-gray-800 dark:text-gray-100">Accommodation Needs:</strong> {selectedApplication.accommodation || "N/A"}</p>
+                {/* Special Needs Section */}
+{selectedApplication.hasSpecialNeed ? (
+  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
+    <p className="text-gray-800 mb-1">
+      <span className="font-medium">Has Special Need:</span> Yes
+    </p>
+    <p className="text-gray-800">
+      <span className="font-medium">Details:</span> {selectedApplication.specialNeedDetails || "Not specified"}
+    </p>
+  </div>
+) : (
+  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
+    <p className="text-gray-800">
+      <span className="font-medium">Has Special Need:</span> No
+    </p>
+  </div>
+)}
                 <div className="mt-4">
                   <p><strong className="text-gray-800 dark:text-gray-100">Resume:</strong></p>
                   {selectedApplication.resume ? (
