@@ -7,13 +7,18 @@ import toast from "react-hot-toast";
 export default function JobDetails() {
   const { jobId } = useParams();
   const navigate = useNavigate();
+
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  //const [needAccommodation, setNeedAccommodation] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [checkingApplication, setCheckingApplication] = useState(true);
+  const [application, setApplication] = useState(null);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,6 +62,12 @@ export default function JobDetails() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (hasApplied) {
+      toast.error("You have already applied to this job.");
+      return;
+    }
+
     if (!token) {
       toast.error("Please log in to apply.");
       navigate("/login");
@@ -80,6 +91,7 @@ export default function JobDetails() {
         },
       });
       toast.success("Application submitted!");
+      setHasApplied(true);
       setApplyOpen(false);
       setFormData({
         name: "",
@@ -105,34 +117,88 @@ export default function JobDetails() {
     }
   };
 
-  const handleSaveJob = async () => {
-    if (!token) {
-      toast.error("Please log in to save a job.");
-      navigate("/login");
-      return;
-    }
+  const handleWithdrawApplication = async () => {
+  console.log("Withdrawing application...", application);
 
-    try {
-      const res = await axios.post(
-        `http://localhost:5000/api/jobs/${jobId}/save`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setIsSaved(!isSaved);
-      let savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-      if (isSaved) {
-        savedJobs = savedJobs.filter((id) => id !== jobId);
-      } else {
-        savedJobs.push(jobId);
+  if (!application?._id) {
+    toast.error("Error: Application ID not found.");
+    setShowWithdrawConfirm(false);
+    return;
+  }
+
+  // NEW: Block withdraw if not Pending
+  if (application.status !== "Pending") {
+    toast.error(`Cannot withdraw: Application is ${application.status}.`);
+    setShowWithdrawConfirm(false);
+    return;
+  }
+
+  try {
+    await axios.delete(
+      `http://localhost:5000/api/applications/${application._id}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
       }
-      localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
-      toast.success(res.data.message);
-    } catch (err) {
-      console.error("Save job error:", err.response?.data || err.message);
-      toast.error(err.response?.data?.message || "Failed to save job.");
-    }
-  };
+    );
 
+    toast.success("Application withdrawn. You can apply again.");
+    setHasApplied(false);
+    setApplication(null);
+    setShowWithdrawConfirm(false);
+
+    // Reset form
+    setFormData({
+      name: "", email: "", phone: "", bio: "", background: "", experience: "",
+      coverLetter: "", accommodation: "", resume: null, certificate: null,
+      hasSpecialNeed: false, specialNeedDetails: ""
+    });
+
+  } catch (err) {
+    console.error("Withdraw error:", err);
+    toast.error(err.response?.data?.message || "Failed to withdraw application.");
+    setShowWithdrawConfirm(false);
+  }
+};
+
+  const handleSaveJob = async () => {
+  if (!token) {
+    toast.error("Please log in to save a job.");
+    navigate("/login");
+    return;
+  }
+
+  if (isSaving) return;
+
+  setIsSaving(true);
+
+  try {
+    const response = await axios.post(
+      `http://localhost:5000/api/jobs/${jobId}/save`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const { saved, message } = response.data;
+    setIsSaved(saved);
+
+    // Update localStorage
+    let savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+    if (saved) {
+      if (!savedJobs.includes(jobId)) savedJobs.push(jobId);
+    } else {
+      savedJobs = savedJobs.filter(id => id !== jobId);
+    }
+    localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
+
+    toast.success(message);
+
+  } catch (err) {
+    console.error("Save error:", err);
+    toast.error(err.response?.data?.message || "Failed to update saved job.");
+  } finally {
+    setIsSaving(false);
+  }
+};
   useEffect(() => {
     const fetchJob = async () => {
       try {
@@ -141,6 +207,34 @@ export default function JobDetails() {
         });
         const jobData = res.data;
         setJob(jobData);
+
+         // === CHECK IF USER ALREADY APPLIED ===
+        let applied = false;
+        if(token) {
+          setCheckingApplication(true);
+          try {
+            const appRes = await axios.get(
+              `http://localhost:5000/api/applications/check/${jobId}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            applied = appRes.data.hasApplied;
+
+            if (applied) {
+              const fullApp = await axios.get(
+                `http://localhost:5000/api/applications/my/${jobId}`,
+                { headers: { Authorization: `Bearer ${token}`}}
+              );
+              setApplication(fullApp.data);
+            }
+          } catch (err) {
+            console.warn("Failed to check application status");
+          } finally {
+            setCheckingApplication(false);
+          }
+        }
+
+        setHasApplied(applied);
+
         const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
         setIsSaved(savedJobs.includes(jobId));
       } catch (err) {
@@ -236,25 +330,58 @@ export default function JobDetails() {
       )}
 
       <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-md mb-6">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setApplyOpen(true)}
-            className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors duration-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-            aria-label="Apply for this job"
-          >
-            Apply Now
-          </button>
+        {hasApplied && application && (
+  <div className="bg-yellow-50 dark:bg-yellow-900 p-3 rounded mb-4 border border-yellow-200 dark:border-yellow-700">
+    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+      Applied on: {new Date(application.createdAt).toLocaleDateString()}
+    </p>
+    <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+      Status: <strong>{application.status || "Pending"}</strong>
+      {application.status !== "Pending" && "— Cannot withdraw"}
+    </p>
+  </div>
+)}
+        <div className="flex gap-4 flex-wrap">
+          {checkingApplication ? (
+  <button disabled className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg text-sm">
+    Checking...
+  </button>
+) : hasApplied ? (
+  application.status === "Pending" ? (
+  <button
+    onClick={() => setShowWithdrawConfirm(true)}
+    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition"
+  >
+    Withdraw Application
+  </button>
+) : (
+  <div className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm">
+    Status: <strong>{application.status}</strong>
+    </div>
+)
+) : (
+  <button
+    onClick={() => {
+      console.log("Opening apply form...");
+      setApplyOpen(true);
+    }}
+    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition"
+  >
+    Apply Now
+  </button>
+)}
           <button
             onClick={handleSaveJob}
+            disabled={isSaving} // ← only disable during request
             className={`px-4 py-2 rounded-lg transition-colors duration-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:focus:ring-yellow-400 ${
-              isSaved
+              isSaving
+                ? "bg-gray-400 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed"
+                : isSaved
                 ? "bg-gray-400 dark:bg-gray-600 text-gray-800 dark:text-gray-200"
                 : "bg-yellow-600 dark:bg-yellow-700 text-white hover:bg-yellow-700 dark:hover:bg-yellow-600"
             }`}
-            disabled={isSaved}
-            aria-label={isSaved ? "Job saved" : "Save this job"}
           >
-            {isSaved ? "Saved" : "Save Job"}
+            {isSaving ? "Saving..." : isSaved ? "Saved" : "Save Job"}
           </button>
         </div>
       </div>
@@ -458,7 +585,37 @@ export default function JobDetails() {
             </form>
           </div>
         </div>
+      
       )}
+
+      {showWithdrawConfirm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+      <h3 className="text-lg font-bold mb-4">Withdraw Application</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">
+        Are you sure you want to <strong>withdraw</strong> your application for 
+        "<strong>{job?.title}</strong>"?<br /><br />
+        You can apply again later if you change your mind.
+      </p>
+      
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => setShowWithdrawConfirm(false)}
+          className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleWithdrawApplication}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+        >
+          Withdraw
+        </button>
+      </div>
     </div>
+  </div>
+)}
+    </div>
+  
   );
 }

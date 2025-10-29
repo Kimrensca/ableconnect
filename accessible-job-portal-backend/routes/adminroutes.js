@@ -233,7 +233,7 @@ router.get("/reports", authenticate, async (req, res) => {
     const totalApplications = await Application.countDocuments();
     const hires = await Application.countDocuments({ status: "Accepted" });
     const resumeUploads = await Application.countDocuments({ resume: { $ne: null } });
-    const accommodations = await Application.countDocuments({ accommodation: { $ne: "" } });
+    const accommodations = await Application.countDocuments({ hasSpecialNeed: true });
     const usersByRole = {
       jobseeker: await User.countDocuments({ role: "jobseeker" }),
       employer: await User.countDocuments({ role: "employer" }),

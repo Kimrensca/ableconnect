@@ -8,6 +8,11 @@ import fs from "fs/promises";
 import Job from "../models/Job.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
 
@@ -441,6 +446,25 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+router.get("/my/:jobId", authenticate, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const application = await Application.findOne({
+      jobId,
+      applicantId: req.user._id,
+    }).populate("jobId");
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    res.json(application);
+  } catch (err) {
+    console.error("Error fetching my application:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Submit application with resume and certificate
 router.post(
   "/",
@@ -569,25 +593,6 @@ router.get("/certificate/:filename", authenticate, async (req, res) => {
   }
 });
 
-// Delete application
-router.delete('/:applicationId', authenticate, async (req, res) => {
-  try {
-    const application = await Application.findById(req.params.applicationId);
-    if (!application) {
-      return res.status(404).json({ message: 'Application not found' });
-    }
-    if (application.applicantId.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
-    await Application.deleteOne({ _id: req.params.applicationId });
-    res.json({ message: 'Application deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting application:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-
 // GET company profile by company name (public)
 router.get("/companies/:companyName", async (req, res) => {
   console.log(`🔍 Request for /api/applications/companies/${req.params.companyName}`);
@@ -624,6 +629,87 @@ router.get("/companies/:companyName", async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching company profile:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// GET /api/applications/check/:jobId
+router.get("/check/:jobId", authenticate, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user.id;
+
+    const existing = await Application.findOne({
+      jobId,
+      applicantId: userId,
+    });
+
+    res.json({ hasApplied: !!existing });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE /api/applications/:id — Withdraw = Delete
+// routes/applications.js — REPLACE YOUR DELETE ROUTE
+router.delete("/:id", authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    console.log(`Attempting to delete application ID: ${id} by user: ${userId}`);
+
+    // Find application
+    const application = await Application.findOne({ _id: id, applicantId: userId });
+    if (!application) {
+      console.log(`Application not found: ${id}`);
+      return res.status(404).json({ message: "Application not found or already withdrawn" });
+    }
+
+    console.log(`Found application. Resume: ${application.resume}, Cert: ${application.certificate}`);
+
+    // Delete resume file (SAFE)
+    if (application.resume) {
+      const resumePath = path.join(__dirname, "../Uploads/resumes", application.resume);
+      try {
+        await fs.access(resumePath); // Check if exists
+        await fs.unlink(resumePath);
+        console.log(`Deleted resume: ${application.resume}`);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          console.warn(`Failed to delete resume (non-critical): ${err.message}`);
+        } else {
+          console.log(`Resume file not found on disk: ${application.resume}`);
+        }
+      }
+    }
+
+    // Delete certificate file (SAFE)
+    if (application.certificate) {
+      const certPath = path.join(__dirname, "../Uploads/certificates", application.certificate);
+      try {
+        await fs.access(certPath);
+        await fs.unlink(certPath);
+        console.log(`Deleted certificate: ${application.certificate}`);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          console.warn(`Failed to delete cert (non-critical): ${err.message}`);
+        } else {
+          console.log(`Cert file not found: ${application.certificate}`);
+        }
+      }
+    }
+
+    // Delete from DB
+    await Application.findByIdAndDelete(id);
+    console.log(`Application deleted from DB: ${id}`);
+
+    res.json({ message: "Application withdrawn successfully" });
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+    res.status(500).json({ 
+      message: "Server error during withdraw", 
+      error: err.message 
+    });
   }
 });
 

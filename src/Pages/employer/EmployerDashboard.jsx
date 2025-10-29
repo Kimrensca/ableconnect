@@ -950,6 +950,7 @@ const EmployerDashboard = () => {
               <p>Applied: {new Date(app.createdAt).toLocaleDateString()}</p>
               <p>Status: <span className={`px-2 py-1 rounded text-xs ${
                 app.status === 'Accepted' ? 'bg-green-100' :
+                //app.status === 'Withdrawn' ? 'bg-blue-100' :
                 app.status === 'Rejected' ? 'bg-red-100' :
                 app.status === 'Interview Scheduled' ? 'bg-blue-100' :
                 'bg-yellow-100'

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -30,6 +29,8 @@ function JobSeekerDashboard() {
   const [activeTab, setActiveTab] = useState("applications");
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false); // NEW
 
   const token = localStorage.getItem("token");
 
@@ -264,12 +265,47 @@ function JobSeekerDashboard() {
         throw new Error(errorData.message || "Failed to delete application");
       }
       setApplications((prev) => prev.filter((app) => app._id !== applicationId));
+      setViewModalOpen(false);
       toast.success("Application removed successfully!");
     } catch (error) {
       console.error("Error deleting application:", error);
       toast.error(error.message || "Failed to remove application.");
     }
   };
+
+// JobSeekerDashboard.jsx  (replace handleWithdrawApplication)
+const handleWithdrawApplication = async (applicationId) => {
+  if (!token || !applicationId) {
+    toast.error("Missing token or application id");
+    return;
+  }
+
+  setIsWithdrawing(true);
+  try {
+    const res = await fetch(`http://localhost:5000/api/applications/${applicationId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || "Failed to withdraw");
+    }
+
+    // ---- REMOVE FROM UI ----
+    setApplications(prev => prev.filter(a => a._id !== applicationId));
+
+    // close modals
+    setShowWithdrawConfirm(false);
+    setViewModalOpen(false);
+
+    toast.success("Application withdrawn – you can apply again.");
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    setIsWithdrawing(false);
+  }
+};
 
   const handleViewFile = async (type, filename) => {
     if (!token || !filename) {
@@ -280,7 +316,6 @@ function JobSeekerDashboard() {
       const url = `http://localhost:5000/api/applications/${type}/${filename}?view=true`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
-        responseType: "blob",
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -376,7 +411,7 @@ function JobSeekerDashboard() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">Welcome, {profile?.username || "Job Seeker"} 👋</h1>
+        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">Welcome, {profile?.username || "Job Seeker"}</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Track applications, manage saved jobs, and update your profile here.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
@@ -485,12 +520,12 @@ function JobSeekerDashboard() {
                                 ? "bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100"
                                 : app.status === "Pending"
                                 ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+                                : app.status === "Interview Scheduled"
+                                ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
                                 : app.status === "Accepted"
                                 ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
                                 : app.status === "Rejected"
                                 ? "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
-                                : app.status === "Interview Scheduled"
-                                ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
                                 : "bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100"
                             }`}
                           >
@@ -550,6 +585,7 @@ function JobSeekerDashboard() {
             </div>
           )}
 
+          {/* VIEW MODAL */}
           {viewModalOpen && selectedApplication && (
             <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-70 flex justify-center items-center">
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
@@ -581,76 +617,81 @@ function JobSeekerDashboard() {
                   <p className="mb-4 text-gray-800 dark:text-gray-100">{selectedApplication.experience || "N/A"}</p>
                 )}
                 <p><strong className="text-gray-800 dark:text-gray-100">Cover Letter:</strong> {selectedApplication.coverLetter || "N/A"}</p>
-                {/* Special Needs Section */}
-{selectedApplication.hasSpecialNeed ? (
-  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
-    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
-    <p className="text-gray-800 mb-1">
-      <span className="font-medium">Has Special Need:</span> Yes
-    </p>
-    <p className="text-gray-800">
-      <span className="font-medium">Details:</span> {selectedApplication.specialNeedDetails || "Not specified"}
-    </p>
-  </div>
-) : (
-  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
-    <p className="text-gray-800">
-      <span className="font-medium">Has Special Need:</span> No
-    </p>
-  </div>
-)}
+
+                {/* Special Needs */}
+                {selectedApplication.hasSpecialNeed ? (
+                  <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <h4 className="text-md font-semibold text-blue-800 mb-2">Special Need Information</h4>
+                    <p className="text-gray-800 mb-1">
+                      <span className="font-medium">Has Special Need:</span> Yes
+                    </p>
+                    <p className="text-gray-800">
+                      <span className="font-medium">Details:</span> {selectedApplication.specialNeedDetails || "Not specified"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
+                    <p className="text-gray-800">
+                      <span className="font-medium">Has Special Need:</span> No
+                    </p>
+                  </div>
+                )}
+
                 <div className="mt-4">
                   <p><strong className="text-gray-800 dark:text-gray-100">Resume:</strong></p>
                   {selectedApplication.resume ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewFile("resume", selectedApplication.resume)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="View resume"
-                      >
-                        View Resume
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleViewFile("resume", selectedApplication.resume)}
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View Resume
+                    </button>
                   ) : (
                     <p className="text-gray-600 dark:text-gray-400">No resume uploaded</p>
                   )}
                 </div>
+
                 <div className="mt-4">
                   <p><strong className="text-gray-800 dark:text-gray-100">Certificate:</strong></p>
                   {selectedApplication.certificate ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewFile("certificate", selectedApplication.certificate)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                        aria-label="View certificate"
-                      >
-                        View Certificate
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleViewFile("certificate", selectedApplication.certificate)}
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View Certificate
+                    </button>
                   ) : (
                     <p className="text-gray-600 dark:text-gray-400">No certificate uploaded</p>
                   )}
                 </div>
-                <div className="mt-4">
-                  <p><strong className="text-gray-800 dark:text-gray-100">Status:</strong> {!selectedApplication.jobId ? "Job Deleted" : selectedApplication.status || "Pending"}</p>
-                  {selectedApplication.feedback && (
-                    <p><strong className="text-gray-800 dark:text-gray-100">Feedback:</strong> {selectedApplication.feedback}</p>
-                  )}
-                </div>
+
+                {/* BUTTONS */}
                 <div className="mt-6 flex justify-end space-x-2">
+                  {selectedApplication.jobId && selectedApplication.status === "Pending" && (
+                    <button
+                      onClick={() => setShowWithdrawConfirm(true)}
+                      disabled={isWithdrawing}
+                      className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 text-sm"
+                    >
+                      { isWithdrawing ? "Withdrawing..." : "Withdraw Application"}
+                    </button>
+                  )}
+
                   {!selectedApplication.jobId && (
                     <button
                       onClick={() => handleDeleteApplication(selectedApplication._id)}
-                      className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 text-sm"
-                      aria-label="Remove application for deleted job"
+                      className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 text-sm"
                     >
                       Remove Application
                     </button>
                   )}
+
                   <button
-                    onClick={() => setViewModalOpen(false)}
-                    className="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-500 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 text-sm"
-                    aria-label="Close application details"
+                    onClick={() => {
+                      setViewModalOpen(false);
+                      setShowWithdrawConfirm(false);
+                    }}
+                    className="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-500 dark:hover:bg-gray-500 text-sm"
                   >
                     Close
                   </button>
@@ -659,6 +700,61 @@ function JobSeekerDashboard() {
             </div>
           )}
 
+          {/* WITHDRAW CONFIRM MODAL */}
+{showWithdrawConfirm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl">
+      <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Withdraw Application?</h3>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">
+        Are you sure you want to <strong>withdraw</strong> your application for
+        "<strong>{selectedApplication?.jobId?.title || 'Job Deleted'}</strong>"?<br /><br />
+        You can apply again later.
+      </p>
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => {
+            console.log("Cancel clicked"); // DEBUG
+            setShowWithdrawConfirm(false);
+          }}
+          className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded transition-colors"
+          disabled={isWithdrawing}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            console.log("Withdraw button clicked!"); // DEBUG
+            console.log("Application ID:", selectedApplication?._id); // DEBUG
+            console.log("Token exists:", !!token); // DEBUG
+            
+            if (!selectedApplication?._id) {
+              console.error("❌ No application ID!");
+              toast.error("Invalid application data");
+              return;
+            }
+            
+            await handleWithdrawApplication(selectedApplication._id);
+          }}
+          disabled={isWithdrawing}
+          className={`px-4 py-2 rounded transition-colors ${
+            isWithdrawing 
+              ? "bg-gray-400 cursor-not-allowed" 
+              : "bg-red-600 hover:bg-red-700 text-white"
+          }`}
+        >
+          {isWithdrawing ? "Withdrawing..." : "Withdraw"}
+        </button>
+      </div>
+      
+      {/* DEBUG INFO - Remove after fixing */}
+      <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+        <strong>Debug:</strong> App ID: {selectedApplication?._id} | Status: {selectedApplication?.status} | Token: {token ? "✅" : "❌"}
+      </div>
+    </div>
+  </div>
+)}
+
+          {/* SAVED JOBS & PROFILE TABS (unchanged) */}
           {activeTab === "savedJobs" && (
             <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-10 border border-gray-200 dark:border-gray-700">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Saved Jobs</h2>
@@ -686,15 +782,13 @@ function JobSeekerDashboard() {
                         <div className="flex gap-2 mt-3 sm:mt-0">
                           <button
                             onClick={() => handleRemoveJob(jobId)}
-                            className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 text-sm"
-                            aria-label={`Remove saved job ${fullJob.title}`}
+                            className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 text-sm"
                           >
                             Remove
                           </button>
                           <button
                             onClick={() => handleApplyJob(jobId)}
-                            className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 text-sm"
-                            aria-label={`Apply for ${fullJob.title}`}
+                            className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 text-sm"
                           >
                             Apply
                           </button>
