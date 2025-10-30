@@ -347,18 +347,19 @@ export default function JobDetails() {
     Checking...
   </button>
 ) : hasApplied ? (
-  application.status === "Pending" ? (
-  <button
-    onClick={() => setShowWithdrawConfirm(true)}
-    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition"
-  >
-    Withdraw Application
-  </button>
-) : (
-  <div className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm">
-    Status: <strong>{application.status}</strong>
+  application?.status === "Pending" ? (
+    <button
+      onClick={() => setShowWithdrawConfirm(true)}
+      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition"
+    >
+      Withdraw Application
+    </button>
+  ) : (
+    <div className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm">
+      Status: <strong>{application?.status || "Pending"}</strong>
     </div>
-)
+  )
+
 ) : (
   <button
     onClick={() => {
