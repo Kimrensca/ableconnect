@@ -14,7 +14,26 @@ dotenv.config();
 const app = express();
 connectDB();
 
-app.use(cors());
+const allowedOrigins = [
+    process.env.CORS_ORIGIN,           // https://ableconnect.vercel.app
+    process.env.CLIENT_URL,            // backup
+    'http://localhost:3000',           // still allow local dev
+  ].filter(Boolean);
+
+app.use(cors(
+    {
+        origin: (origin, callback) => {
+          // Allow requests with no origin (like mobile apps, Postman)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+            } else {
+            callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true,
+        }
+));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
