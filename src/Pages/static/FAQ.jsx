@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import useTextToSpeech from '../../hooks/useTextToSpeech';
+import apiFetch from '../../utils/api';
 
 const FAQ = () => {
   const navigate = useNavigate();
@@ -13,14 +14,8 @@ const FAQ = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/content?category=FAQ', {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
-        }
-        const data = await res.json();
+        setLoading(true);
+        const data = await apiFetch('/content?category=FAQ');
         setContent(data);
         setLoading(false);
       } catch (err) {

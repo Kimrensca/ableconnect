@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import  useTextToSpeech  from '../hooks/useTextToSpeech';
+import apiFetch from '../utils/api';
 
 const Content = () => {
   const navigate = useNavigate();
@@ -14,19 +15,15 @@ const Content = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const url = selectedCategory
-          ? `http://localhost:5000/api/content?category=${selectedCategory}`
-          : 'http://localhost:5000/api/content';
-        const res = await fetch(url, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
-        }
-        const data = await res.json();
+        setLoading(true);
+      
+        const endpoint = selectedCategory
+          ? `/content?category=${selectedCategory}`
+          : '/content';
+      
+        const data = await apiFetch(endpoint);
+      
         setContent(data);
-        setLoading(false);
       } catch (err) {
         toast.error(`Failed to load content: ${err.message}`, {
           duration: 4000,
@@ -37,6 +34,7 @@ const Content = () => {
             border: '1px solid #b91c1c',
           },
         });
+      } finally {
         setLoading(false);
       }
     };

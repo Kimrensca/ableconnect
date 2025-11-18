@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 
 const JobSeekerApplications = () => {
   const [applications, setApplications] = useState([]);
@@ -12,12 +13,13 @@ const JobSeekerApplications = () => {
 
   useEffect(() => {
     const fetchApplications = async () => {
+      if (!token) {
+        setError('Please log in to view your applications');
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await fetch('http://localhost:5000/api/applications/jobseeker', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to fetch applications');
+        const data = await apiFetch('/applications/jobseeker');
         setApplications(data);
       } catch (err) {
         setError(err.message);
@@ -33,6 +35,75 @@ const JobSeekerApplications = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     navigate('/login');
+  };
+
+  
+  // Download Resume Handler
+  const handleDownloadResume = async (filename) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please log in to download resume');
+      return;
+    }
+    if (!filename) {
+      toast.error('No resume available');
+      return;
+    }
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/applications/resume/${encodeURIComponent(filename)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error('Failed to fetch resume');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Failed to download resume');
+    }
+  };
+
+  // Download Certificate Handler
+  const handleDownloadCertificate = async (certificateName) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please log in to download certificate');
+      return;
+    }
+    if (!certificateName) {
+      toast.error('No certificate available');
+      return;
+    }
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/applications/certificate/${encodeURIComponent(certificateName)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error('Failed to fetch certificate');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = certificateName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Failed to download certificate');
+    }
   };
 
   return (
@@ -184,29 +255,7 @@ const JobSeekerApplications = () => {
               {app.resume && (
                 <div className="mt-2">
                   <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(
-                          `http://localhost:5000/api/applications/resume/${encodeURIComponent(app.resume)}`,
-                          {
-                            headers: { Authorization: `Bearer ${token}` },
-                          }
-                        );
-                        if (!response.ok) throw new Error('Failed to fetch resume');
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = app.resume;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                      } catch (err) {
-                        console.error('Download error:', err);
-                        toast.error('Failed to download resume');
-                      }
-                    }}
+                    onClick={() => handleDownloadResume(app.resume)}
                     className="text-blue-600 dark:text-blue-400 underline text-sm hover:text-blue-800 dark:hover:text-blue-300"
                     aria-label="Download Resume"
                   >
@@ -219,29 +268,7 @@ const JobSeekerApplications = () => {
               {app.certificate && (
                 <div className="mt-2">
                   <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(
-                          `http://localhost:5000/api/applications/certificate/${encodeURIComponent(app.certificate)}`,
-                          {
-                            headers: { Authorization: `Bearer ${token}` },
-                          }
-                        );
-                        if (!response.ok) throw new Error('Failed to fetch certificate');
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = app.certificate;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                      } catch (err) {
-                        console.error('Download error:', err);
-                        toast.error('Failed to download certificate');
-                      }
-                    }}
+                    onClick={() => handleDownloadCertificate(app.certificate)}
                     className="text-blue-600 dark:text-blue-400 underline text-sm hover:text-blue-800 dark:hover:text-blue-300"
                     aria-label="Download Certificate"
                   >

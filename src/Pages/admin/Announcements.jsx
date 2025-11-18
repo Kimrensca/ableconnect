@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Megaphone } from 'lucide-react';
+import apiFetch from '../../utils/api';
 
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([]);
@@ -12,11 +12,7 @@ const Announcements = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/content?category=Announcements', {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        const data = await res.json();
+        const data = await apiFetch('/content?category=Announcements');
         setAnnouncements(Array.isArray(data) ? data : []);
         setLoading(false);
       } catch (err) {

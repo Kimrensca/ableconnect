@@ -1,6 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 import '../../globals.css';
 
 function Register() {
@@ -15,6 +16,7 @@ function Register() {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const validate = (name, value) => {
     switch (name) {
@@ -52,23 +54,20 @@ function Register() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
+    setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      await apiFetch('/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      alert('Registration successful!');
+      toast.success('Registration successful!');
       navigate('/login');
     } catch (err) {
       setErrors((prevErrors) => ({ ...prevErrors, general: err.message }));
+      toast.error(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,7 +76,7 @@ function Register() {
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md border border-gray-200 dark:border-gray-700">
         <h2 className="text-2xl font-bold mb-4 text-center text-blue-700 dark:text-blue-400">Register</h2>
 
-        {errors.general && <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center">{errors.general}</p>}
+        {errors.general && <p className="text-red-600 dark:text-red-400 text-sm mt-2 text-center" role="alert">{errors.general}</p>}
 
         <div className="mb-4">
           <label htmlFor="name" className="font-semibold block mb-1 text-gray-800 dark:text-gray-300">
@@ -93,7 +92,7 @@ function Register() {
             required
             aria-label="Full Name"
           />
-          {errors.name && <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.name}</p>}
+          {errors.name && <p className="text-red-600 dark:text-red-400 text-sm mt-1" role="alert">{errors.name}</p>}
         </div>
 
         <div className="mb-4">
@@ -110,7 +109,7 @@ function Register() {
             required
             aria-label="Username"
           />
-          {errors.username && <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.username}</p>}
+          {errors.username && <p className="text-red-600 dark:text-red-400 text-sm mt-1" role="alert">{errors.username}</p>}
         </div>
 
         <div className="mb-4">
@@ -127,7 +126,7 @@ function Register() {
             required
             aria-label="Email"
           />
-          {errors.email && <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.email}</p>}
+          {errors.email && <p className="text-red-600 dark:text-red-400 text-sm mt-1" role="alert">{errors.email}</p>}
         </div>
 
         <div className="mb-4">
@@ -138,13 +137,13 @@ function Register() {
             type="password"
             name="password"
             id="password"
-            className="w-full p-2(border border-gray-300 dark:border-gray-600 rounded mt-1 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             value={formData.password}
             onChange={handleChange}
             required
             aria-label="Password"
           />
-          {errors.password && <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.password}</p>}
+          {errors.password && <p className="text-red-600 dark:text-red-400 text-sm mt-1" role="alert">{errors.password}</p>}
         </div>
 
         <fieldset className="mb-4">
@@ -179,10 +178,11 @@ function Register() {
 
         <button
           type="submit"
-          className="bg-blue-600 dark:bg-blue-700 text-white py-2 px-4 rounded w-full hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-          aria-label="Register"
+          className="bg-blue-600 dark:bg-blue-700 text-white py-2 px-4 rounded w-full hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:bg-blue-300 dark:disabled:bg-blue-500 transition"
+          aria-label={loading ? 'Registering' : 'Register'}
+          disabled={loading}
         >
-          Register
+          {loading ? 'Registering...' : 'Register'}
         </button>
 
         <p className="text-sm text-center mt-4 text-gray-800 dark:text-gray-100">
@@ -190,7 +190,6 @@ function Register() {
           <Link
             to="/login"
             className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-            role="link"
             aria-label="Login or Sign In"
           >
             Login / Sign In

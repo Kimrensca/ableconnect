@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClipLoader } from "react-spinners";
 import toast from "react-hot-toast";
-import axios from "axios";
+import apiFetch from "../../utils/api";
 
 const PostJob = () => {
   const navigate = useNavigate();
@@ -31,10 +31,8 @@ const PostJob = () => {
     const fetchProfile = async () => {
       if (token) {
         try {
-          const res = await axios.get("http://localhost:5000/api/applications/profile", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setProfileCompany(res.data.companyProfile?.name || "");
+          const res = await apiFetch('/applications/profile');
+          setProfileCompany(res.companyProfile?.name || "");
         } catch (err) {
           console.error("Error fetching profile:", err);
         }
@@ -95,21 +93,10 @@ const PostJob = () => {
       console.log("Form Data:", normalizedFormData);
       console.log("Token:", token);
 
-      const response = await fetch("http://localhost:5000/api/jobs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      await apiFetch('/jobs', {
+        method: 'POST',
         body: JSON.stringify(normalizedFormData),
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        const error = new Error(data.message || "Failed to post job");
-        error.response = { status: response.status, data };
-        throw error;
-      }
 
       toast.success("Job posted successfully!");
       navigate("/dashboard/employer");

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
+import apiFetch from "../../utils/api";
 
 export default function JobDetails() {
   const { jobId } = useParams();
@@ -15,9 +15,9 @@ export default function JobDetails() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
-        if (!res.data) throw new Error("Job not found");
-        setJob(res.data);
+        const res = await apiFetch(`/jobs/${jobId}`);
+        if (!res) throw new Error("Job not found");
+        setJob(res);
       } catch (err) {
         console.error(err);
         setError("Failed to load job details.");
@@ -39,17 +39,19 @@ export default function JobDetails() {
         return;
       }
 
-      const res = await axios.post("http://localhost:5000/api/applications", {
-        jobId: job?._id,
-        userId,
+      await apiFetch("/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          jobId: job?._id,
+          userId,
+        }),
       });
 
-      if (res.status === 201) {
         toast.success("Application submitted successfully!");
-      }
+      
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Error submitting application.");
+      toast.error(err.message || "Error submitting application.");
     } finally {
       setApplying(false);
     }

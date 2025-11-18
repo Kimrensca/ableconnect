@@ -1,6 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 
 function Login() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ function Login() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const rememberedEmail = localStorage.getItem('rememberedEmail');
@@ -55,29 +57,30 @@ function Login() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
+    setLoading(true);
+    setLoginError('');
+
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const data = await apiFetch('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usernameOrEmail: formData.usernameOrEmail,
           password: formData.password,
         }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-
       localStorage.setItem('token', data.token);
       localStorage.setItem('userRole', data.user.role);
       localStorage.setItem('username', data.user.username);
+      localStorage.setItem('userId', data.user.id);
 
       if (formData.rememberMe) {
         localStorage.setItem('rememberedEmail', formData.usernameOrEmail);
       } else {
         localStorage.removeItem('rememberedEmail');
       }
+
+      toast.success('Login successful!');
 
       if (data.user.role === 'jobseeker') {
         navigate('/dashboard/jobseeker');
@@ -86,10 +89,14 @@ function Login() {
       } else if (data.user.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/home');
+        navigate('/');
       }
     } catch (err) {
-      setLoginError(err.message);
+      const errorMsg = err.message || 'Login failed. Please try again.';
+      setLoginError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,7 +111,7 @@ function Login() {
         </h2>
 
         {loginError && (
-          <p className="text-sm text-red-600 dark:text-red-400 mb-3 sm:mb-4 text-center">{loginError}</p>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-3 sm:mb-4 text-center" role="alert">{loginError}</p>
         )}
 
         <div className="mb-3 sm:mb-4">
@@ -119,10 +126,11 @@ function Login() {
             value={formData.usernameOrEmail.trim()}
             onChange={handleChange}
             required
+            disabled={loading}
             aria-label="Username or Email"
           />
           {errors.usernameOrEmail && (
-            <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.usernameOrEmail}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1" role="alert">{errors.usernameOrEmail}</p>
           )}
         </div>
 
@@ -139,19 +147,21 @@ function Login() {
               value={formData.password}
               onChange={handleChange}
               required
+              disabled={loading}
               aria-label="Password"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               className="absolute inset-y-0 right-2 px-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 min-h-[44px] flex items-center"
+              disabled={loading}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
           {errors.password && (
-            <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.password}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1" role="alert">{errors.password}</p>
           )}
         </div>
 
@@ -163,6 +173,7 @@ function Login() {
             className="mr-2 h-4 w-4 accent-blue-600 dark:accent-blue-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             checked={formData.rememberMe}
             onChange={handleChange}
+            disabled={loading}
             aria-label="Remember me"
           />
           <label htmlFor="rememberMe" className="text-sm text-gray-800 dark:text-gray-100">
@@ -172,10 +183,11 @@ function Login() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 dark:bg-blue-700 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[44px] text-sm sm:text-base"
-          aria-label="Log In"
+          className="w-full bg-blue-600 dark:bg-blue-700 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[44px] text-sm sm:text-base disabled:bg-blue-400 dark:disabled:bg-blue-500 transition"
+          aria-label={loading ? 'Logging in' : 'Log In'}
+          disabled={loading}
         >
-          Log In
+          {loading ? 'Logging in...' : 'Log In'}
         </button>
 
         <div className="mt-3 sm:mt-4 text-center">

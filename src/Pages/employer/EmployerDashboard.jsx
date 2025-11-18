@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import apiFetch from '../../utils/api';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
@@ -43,24 +43,24 @@ const EmployerDashboard = () => {
   const fetchJobs = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5000/api/jobs/employer', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Failed to fetch jobs: ${await res.text()}`);
-      const jobsData = await res.json();
+      const jobsData = await apiFetch('/jobs/employer');
       setJobs(Array.isArray(jobsData) ? jobsData : []);
 
       let totalApps = 0;
       const newApplicantsMap = {};
       for (const job of jobsData) {
-        const appRes = await fetch(`http://localhost:5000/api/applications/employer/${job._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!appRes.ok) continue;
-        const apps = await appRes.json();
-        totalApps += apps.length;
-        newApplicantsMap[job._id] = Array.isArray(apps) ? apps : [];
+        try {
+          const apps = await apiFetch(`/applications/employer/${job._id}`);
+          const appsArray = Array.isArray(apps) ? apps : [];
+          totalApps += appsArray.length;
+          newApplicantsMap[job._id] = appsArray;
+        } catch (err) {
+          // ignore individual job application fetch errors but continue
+          newApplicantsMap[job._id] = [];
+          console.warn(`Failed to load applicants for job ${job._id}:`, err);
+        }
       }
+      
       setApplicantsMap(newApplicantsMap);
       setTotalApplications(totalApps);
     } catch (err) {
@@ -72,11 +72,7 @@ const EmployerDashboard = () => {
     if (!token) return;
     setIsLoadingProfile(true);
     try {
-      const res = await fetch('http://localhost:5000/api/applications/profile', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch('/applications/profile');
       setCompanyProfile({
         username: data.username || '',
         companyName: data.companyName || '',
@@ -113,12 +109,10 @@ const EmployerDashboard = () => {
 
     try {
       setIsLoadingProfile(true);
-      const res = await fetch('http://localhost:5000/api/applications/profile', {
+      await apiFetch('/applications/profile', {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
       toast.success('Profile updated!');
       setModalOpen(null);
       localStorage.setItem('username', companyProfile.username);
@@ -131,12 +125,10 @@ const EmployerDashboard = () => {
 
   const handleCloseJob = async (jobId, newStatus = 'Closed') => {
     try {
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
+      await apiFetch(`/jobs/${jobId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error(await res.text());
       toast.success(`Job ${newStatus.toLowerCase()}!`);
       fetchJobs();
     } catch (err) {
@@ -147,15 +139,11 @@ const EmployerDashboard = () => {
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm('Delete this job?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/jobs/${jobId}`, { method: 'DELETE' });
       toast.success('Job deleted');
       fetchJobs();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to delete job');
     }
   };
 
@@ -163,54 +151,64 @@ const EmployerDashboard = () => {
 
   const handleViewApplicants = async (jobId) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/applications/employer/${jobId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSelectedJobApplicants(res.data);
+      const res = await apiFetch(`/applications/employer/${jobId}`);
+      setSelectedJobApplicants(res || []);
       setApplicantsModalOpen(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load applicants');
+      toast.error(err.message || 'Failed to load applicants');
     }
   };
 
   const updateStatus = async (applicationId, status, jobId, notes = '') => {
     try {
-      const res = await fetch(`http://localhost:5000/api/applications/${applicationId}/status`, {
+      await apiFetch(`/applications/${applicationId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, notes }),
       });
-      if (!res.ok) throw new Error(await res.text());
       toast.success('Status updated');
       fetchJobs(); // Refresh all
       setReviewModalOpen(false);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to update status');
     }
   };
 
   const handleViewFile = async (type, filename) => {
     try {
-      const url = `http://localhost:5000/api/applications/${type}/${filename}?view=true`;
-      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' });
-      const blob = new Blob([res.data], { type: res.data.type });
-      window.open(URL.createObjectURL(blob), '_blank');
-    } catch {
+      const tokenLocal = localStorage.getItem('token');
+      const url = `/api/applications/${type}/${encodeURIComponent(filename)}?view=true`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${tokenLocal}` },
+      });
+      if (!res.ok) throw new Error('Failed to view file');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      // optional: revoke after some time
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (err) {
       toast.error(`Failed to view ${type}`);
     }
   };
 
   const handleDownloadFile = async (type, filename) => {
     try {
-      const url = `http://localhost:5000/api/applications/${type}/${filename}`;
-      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' });
-      const urlBlob = URL.createObjectURL(new Blob([res.data]));
+      const tokenLocal = localStorage.getItem('token');
+      const url = `/api/applications/${type}/${encodeURIComponent(filename)}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${tokenLocal}` },
+      });
+      if (!res.ok) throw new Error('Failed to download file');
+      const blob = await res.blob();
+      const urlBlob = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = urlBlob;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(urlBlob);
-    } catch {
+    } catch (err) {
       toast.error(`Failed to download ${type}`);
     }
   };

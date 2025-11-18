@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 
 function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -14,19 +14,17 @@ function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      await apiFetch('/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
       setMessage('Password reset link sent! Check your email.');
       toast.success('Password reset link sent! Check your email.');
     } catch (err) {
-      setMessage(err.message);
-      toast.error(err.message);
+      const errorMsg = err.message || 'Failed to send reset link';
+      setMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -58,13 +56,14 @@ function ForgotPassword() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               required
+              disabled={loading}
               aria-label="Email address for password reset"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+            className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
             aria-label={loading ? 'Sending reset link' : 'Send password reset link'}
           >
             {loading ? 'Sending...' : 'Send Reset Link'}

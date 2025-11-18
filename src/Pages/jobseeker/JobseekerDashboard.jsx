@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import apiFetch from "../../utils/api";
 
 function JobSeekerDashboard() {
   const navigate = useNavigate();
@@ -42,9 +43,7 @@ function JobSeekerDashboard() {
 
   const fetchJobs = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/jobs");
-      if (!res.ok) throw new Error("Failed to fetch jobs");
-      const data = await res.json();
+      const data = await apiFetch('/jobs');
       setJobs(data);
     } catch (error) {
       console.error("Error fetching jobs:", error);
@@ -55,11 +54,8 @@ function JobSeekerDashboard() {
   const fetchApplications = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/applications/jobseeker", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch applications");
-      const data = await res.json();
+      const data = await apiFetch('/applications/jobseeker');
+
       setApplications(data);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -70,11 +66,7 @@ function JobSeekerDashboard() {
   const fetchProfile = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/applications/jobseeker/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch profile");
-      const data = await res.json();
+      const data = await apiFetch('/applications/jobseeker/profile');
       setProfile(data || {});
       setFormData({
         username: data.username || "",
@@ -142,16 +134,13 @@ function JobSeekerDashboard() {
     if (resumeFile && resumeFile instanceof File) formDataToSend.append("resume", resumeFile);
 
     try {
-      const res = await fetch("http://localhost:5000/api/applications/jobseeker/profile", {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formDataToSend,
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-      const data = await res.json();
+      const data = await apiFetch(
+        '/applications/jobseeker/profile',
+        {
+          method: 'PUT',
+          body: formDataToSend,
+        }
+      );
       setProfile(data);
       setFormData({
         username: data.username || "",
@@ -203,16 +192,13 @@ function JobSeekerDashboard() {
   const handlePreferencesSave = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/applications/jobseeker/preferences", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(preferencesForm),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch(
+        '/applications/jobseeker/accommodation',
+        {
+          method: 'PUT',
+          body: JSON.stringify(accommodationForm),
+        }
+      );
       setProfile((prev) => ({ ...prev, ...data }));
       setEditingSection(null);
       toast.success("Preferences updated successfully!");
@@ -229,16 +215,13 @@ function JobSeekerDashboard() {
   const handleAccommodationSave = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/applications/jobseeker/accommodation", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(accommodationForm),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch(
+        '/applications/jobseeker/accommodation',
+        {
+          method: 'PUT',
+          body: JSON.stringify(accommodationForm),
+        }
+      );
       setProfile((prev) => ({ ...prev, ...data }));
       setAccommodationForm({ accommodationPreferences: data.accommodationPreferences });
       setEditingSection(null);
@@ -256,14 +239,9 @@ function JobSeekerDashboard() {
     }
     if (!window.confirm("Are you sure you want to remove this application?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/applications/${applicationId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      await apiFetch(`/applications/${applicationId}`, {
+        method: 'DELETE',
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to delete application");
-      }
       setApplications((prev) => prev.filter((app) => app._id !== applicationId));
       setViewModalOpen(false);
       toast.success("Application removed successfully!");
@@ -282,15 +260,9 @@ const handleWithdrawApplication = async (applicationId) => {
 
   setIsWithdrawing(true);
   try {
-    const res = await fetch(`http://localhost:5000/api/applications/${applicationId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+    await apiFetch(`/applications/${applicationId}`, {
+      method: 'DELETE',
     });
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.message || "Failed to withdraw");
-    }
 
     // ---- REMOVE FROM UI ----
     setApplications(prev => prev.filter(a => a._id !== applicationId));
@@ -299,7 +271,7 @@ const handleWithdrawApplication = async (applicationId) => {
     setShowWithdrawConfirm(false);
     setViewModalOpen(false);
 
-    toast.success("Application withdrawn – you can apply again.");
+    toast.success("Application withdrawn - you can apply again.");
   } catch (err) {
     toast.error(err.message);
   } finally {
@@ -313,15 +285,11 @@ const handleWithdrawApplication = async (applicationId) => {
       return;
     }
     try {
-      const url = `http://localhost:5000/api/applications/${type}/${filename}?view=true`;
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch file");
-      }
-      const blob = await response.blob();
+      const response = await apiFetch(`/applications/${type}/${filename}?view=true`);
+    
+    // If apiFetch returns a blob, use it; otherwise convert response to blob
+    const blob = response instanceof Blob ? response : new Blob([JSON.stringify(response)]);
+
       const fileExt = filename.split('.').pop().toLowerCase();
       const mimeTypes = {
         pdf: 'application/pdf',
@@ -360,12 +328,9 @@ const handleWithdrawApplication = async (applicationId) => {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/save`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to remove job");
-      const data = await res.json();
+      const data = await apiFetch(`/jobs/${jobId}/save`, {
+      method: 'POST',
+    });
       setSavedJobs((prev) => prev.filter((id) => id !== jobId));
       let savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
       savedJobs = savedJobs.filter((id) => id !== jobId);

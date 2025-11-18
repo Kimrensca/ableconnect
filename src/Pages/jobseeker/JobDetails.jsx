@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
+import apiFetch from "../../utils/api";
 
 export default function JobDetails() {
   const { jobId } = useParams();
@@ -84,12 +84,12 @@ export default function JobDetails() {
     }
 
     try {
-      await axios.post(`http://localhost:5000/api/applications`, data, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+      await apiFetch('/applications', {
+        method: 'POST',
+        body: data, // apiFetch should forward FormData as-is
+        raw: false, // keep default parsing (expects JSON response)
       });
+
       toast.success("Application submitted!");
       setHasApplied(true);
       setApplyOpen(false);
@@ -134,12 +134,8 @@ export default function JobDetails() {
   }
 
   try {
-    await axios.delete(
-      `http://localhost:5000/api/applications/${application._id}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await apiFetch(`/applications/${application._id}`, { method: 'DELETE' });
+
 
     toast.success("Application withdrawn. You can apply again.");
     setHasApplied(false);
@@ -172,29 +168,25 @@ export default function JobDetails() {
   setIsSaving(true);
 
   try {
-    const response = await axios.post(
-      `http://localhost:5000/api/jobs/${jobId}/save`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const response = await apiFetch(`/jobs/${jobId}/save`, { method: 'POST' });
+      // response expected: { saved: boolean, message: string }
+      setIsSaved(response.saved);
 
-    const { saved, message } = response.data;
-    setIsSaved(saved);
+      // Update localStorage
+      let savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+      if (response.saved) {
+        if (!savedJobs.includes(jobId)) savedJobs.push(jobId);
+      } else {
+        savedJobs = savedJobs.filter(id => id !== jobId);
+      }
+      localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
 
-    // Update localStorage
-    let savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-    if (saved) {
-      if (!savedJobs.includes(jobId)) savedJobs.push(jobId);
-    } else {
-      savedJobs = savedJobs.filter(id => id !== jobId);
-    }
-    localStorage.setItem("savedJobs", JSON.stringify(savedJobs));
 
-    toast.success(message);
+    toast.success(response.message || "Saved status updated.");
 
   } catch (err) {
     console.error("Save error:", err);
-    toast.error(err.response?.data?.message || "Failed to update saved job.");
+    toast.error(err.message || "Failed to update saved job.");
   } finally {
     setIsSaving(false);
   }
@@ -202,10 +194,7 @@ export default function JobDetails() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/jobs/${jobId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const jobData = res.data;
+        const jobData = await apiFetch(`/jobs/${jobId}`); // uses apiFetch
         setJob(jobData);
 
          // === CHECK IF USER ALREADY APPLIED ===
@@ -213,18 +202,13 @@ export default function JobDetails() {
         if(token) {
           setCheckingApplication(true);
           try {
-            const appRes = await axios.get(
-              `http://localhost:5000/api/applications/check/${jobId}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            applied = appRes.data.hasApplied;
+            const appRes = await apiFetch(`/applications/check/${jobId}`);
+            applied = appRes.hasApplied;
+
 
             if (applied) {
-              const fullApp = await axios.get(
-                `http://localhost:5000/api/applications/my/${jobId}`,
-                { headers: { Authorization: `Bearer ${token}`}}
-              );
-              setApplication(fullApp.data);
+              const fullApp = await apiFetch(`/applications/my/${jobId}`);
+              setApplication(fullApp);
             }
           } catch (err) {
             console.warn("Failed to check application status");

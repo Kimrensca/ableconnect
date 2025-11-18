@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../Components/ui/button';
 import { Megaphone } from 'lucide-react';
 import useTextToSpeech from '../hooks/useTextToSpeech';
+import apiFetch from '../utils/api';
 
 function Home() {
   const [homepageContent, setHomepageContent] = useState([]);
@@ -15,19 +16,18 @@ function Home() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/content?category=Homepage,Announcements', {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        const data = await res.json();
+        setLoading(true);
+        const data = await apiFetch('/content?category=Homepage,Announcements');
+      
         const homepage = data.filter((item) => item.category === 'Homepage');
         const announcements = data.filter((item) => item.category === 'Announcements');
+      
         setHomepageContent(Array.isArray(homepage) ? homepage : []);
         setAnnouncements(Array.isArray(announcements) ? announcements : []);
-        setLoading(false);
       } catch (err) {
         console.error('Error fetching content:', err);
         setError(`Failed to load content: ${err.message}`);
+      } finally {
         setLoading(false);
       }
     };

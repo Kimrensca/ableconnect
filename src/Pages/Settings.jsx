@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAccessibility } from '../hooks/use-accessibility';
 import useTextToSpeech from '../hooks/useTextToSpeech';
+import apiFetch from '../utils/api';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -56,17 +57,8 @@ const Settings = () => {
 
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/settings', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
-        }
-        const data = await res.json();
+        setLoading(true);
+        const data = await apiFetch('/settings');
         setSettings({
           tts: data.tts || { voice: '', rate: 1, volume: 1 },
           notifications: data.notifications || { jobAlerts: true, announcements: true },
@@ -99,18 +91,10 @@ const Settings = () => {
       return;
     }
     try {
-      const res = await fetch('http://localhost:5000/api/settings', {
+      await apiFetch('/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ ...settings, fontSize, highContrast }),
       });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
-      }
       toast.success('Settings saved successfully!', {
         duration: 4000,
         position: 'top-center',

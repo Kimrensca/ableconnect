@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 
 function ResetPassword() {
   const { token } = useParams(); // Get the token from the URL
@@ -18,14 +19,10 @@ function ResetPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/auth/reset-password/${token}`, {
+      await apiFetch(`/auth/reset-password/${token}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Reset failed');
       setMessage('Password has been reset successfully! Redirecting to login...');
       toast.success('Password reset successfully!');
       setTimeout(() => {

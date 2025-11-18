@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
+import apiFetch from "../../utils/api";
 
 export default function ApplicationDetails() {
   const { id } = useParams();
@@ -13,14 +13,12 @@ export default function ApplicationDetails() {
   useEffect(() => {
     const fetchApplication = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/applications/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setApplication(res.data);
+        const data = await apiFetch(`/applications/${id}`);
+        setApplication(data);
       } catch (err) {
         console.error(err);
         setError("Failed to load application details.");
-        toast.error(err.response?.data?.message || "Error loading application.");
+        toast.error(err.message || "Error loading application.");
       } finally {
         setLoading(false);
       }
@@ -43,19 +41,19 @@ export default function ApplicationDetails() {
       return;
     }
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/applications/resume/${encodeURIComponent(application.resume)}?view=true`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
+      const tokenLocal = localStorage.getItem("token");
+      const res = await fetch(`/api/applications/resume/${encodeURIComponent(application.resume)}?view=true`, {
+        headers: { Authorization: `Bearer ${tokenLocal}` },
+      });
+      if (!res.ok) throw new Error('Failed to load resume');
+      const blob = await res.blob();
+      const contentType = res.headers.get('content-type') || 'application/pdf';
+      const url = window.URL.createObjectURL(new Blob([blob], { type: contentType }));
       window.open(url, "_blank");
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000); // Clean up after a short delay
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error("Error fetching resume:", err);
-      toast.error(err.response?.data?.message || "Failed to load resume.");
+      toast.error(err.message || "Failed to load resume.");
     }
   };
 
@@ -65,19 +63,19 @@ export default function ApplicationDetails() {
       return;
     }
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/applications/certificate/${encodeURIComponent(application.certificate)}?view=true`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
+      const tokenLocal = localStorage.getItem("token");
+      const res = await fetch(`/api/applications/certificate/${encodeURIComponent(application.certificate)}?view=true`, {
+        headers: { Authorization: `Bearer ${tokenLocal}` },
+      });
+      if (!res.ok) throw new Error('Failed to load certificate');
+      const blob = await res.blob();
+      const contentType = res.headers.get('content-type') || 'application/pdf';
+      const url = window.URL.createObjectURL(new Blob([blob], { type: contentType }));
       window.open(url, "_blank");
       setTimeout(() => window.URL.revokeObjectURL(url), 1000); // Clean up after a short delay
     } catch (err) {
       console.error("Error fetching certificate:", err);
-      toast.error(err.response?.data?.message || "Failed to load certificate.");
+      toast.error(err.message || "Failed to load certificate.");
     }
   };
 

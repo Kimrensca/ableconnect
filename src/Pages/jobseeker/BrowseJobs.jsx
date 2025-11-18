@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import apiFetch from "../../utils/api";
 
 const BrowseJobs = () => {
   const [jobs, setJobs] = useState([]);
@@ -33,10 +34,14 @@ const BrowseJobs = () => {
       // Save filters into URL for persistence
       setSearchParams(params);
 
-      const url = `http://localhost:5000/api/jobs?${params.toString()}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setJobs(data);
+      try {
+        // use apiFetch (it handles /api prefix and auth headers)
+        const data = await apiFetch(`/jobs?${params.toString()}`);
+        setJobs(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching jobs:", err);
+        setJobs([]);
+      }
     };
 
     fetchJobs();

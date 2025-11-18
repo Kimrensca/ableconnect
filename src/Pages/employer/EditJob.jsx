@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import apiFetch from '../../utils/api';
 
 const EditJob = () => {
   const { id } = useParams(); // Get job ID from URL
@@ -26,13 +27,7 @@ const EditJob = () => {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5000/api/jobs/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: Failed to fetch job`);
-        }
-        const data = await res.json();
+        const data = await apiFetch(`/jobs/${id}`); // replaced fetch with apiFetch
         setJob(data);
       } catch (error) {
         console.error('Error fetching job:', error);
@@ -56,17 +51,10 @@ const EditJob = () => {
     e.preventDefault();
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/jobs/${id}`, {
+      await apiFetch(`/jobs/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(job),
+        body: JSON.stringify(job), // apiFetch will set headers / parse JSON
       });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Failed to update job`);
-      }
       toast.success('Job updated successfully!');
       navigate('/dashboard/employer'); // Return to dashboard
     } catch (error) {

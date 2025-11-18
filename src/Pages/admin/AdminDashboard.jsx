@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Chart from "chart.js/auto";
+import apiFetch from "../../utils/api";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -30,11 +31,7 @@ const AdminDashboard = () => {
   const fetchUsers = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/admin/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      const data = await res.json();
+      const data = await apiFetch('/admin/users');
       setUsers(Array.isArray(data) ? data : data.users || []);
     } catch (err) {
       toast.error(`Failed to fetch users: ${err.message}`);
@@ -44,11 +41,7 @@ const AdminDashboard = () => {
   const fetchJobs = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/admin/jobs", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch('/admin/jobs');
       setJobs(Array.isArray(data) ? data : data.jobs || []);
     } catch (err) {
       toast.error(`Failed to fetch jobs: ${err.message}`);
@@ -58,11 +51,7 @@ const AdminDashboard = () => {
   const fetchApplications = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/admin/applications", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch('/admin/applications');
       setApplications(Array.isArray(data) ? data : data.applications || []);
     } catch (err) {
       toast.error(`Failed to fetch applications: ${err.message}`);
@@ -72,11 +61,7 @@ const AdminDashboard = () => {
   const fetchReports = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/admin/reports", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch('/admin/reports');
       setReports(data);
     } catch (err) {
       toast.error(`Failed to fetch reports: ${err.message}`);
@@ -86,11 +71,7 @@ const AdminDashboard = () => {
   const fetchContent = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5000/api/admin/content", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await apiFetch('/admin/content');
       setContentItems(Array.isArray(data) ? data : data.content || []);
     } catch (err) {
       toast.error(`Failed to fetch content: ${err.message}`);
@@ -100,17 +81,9 @@ const AdminDashboard = () => {
   // === User Handlers ===
   const handleApprove = async (userId) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}/approve`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/users/${userId}/approve`, {
+        method: 'PUT',
+      });
       fetchUsers();
       toast.success("Employer approved");
     } catch (err) {
@@ -120,18 +93,10 @@ const AdminDashboard = () => {
 
   const handleEditUser = async (userId, updatedData) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedData),
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedData),
+      });
       fetchUsers();
       toast.success("User updated");
     } catch (err) {
@@ -141,17 +106,9 @@ const AdminDashboard = () => {
 
   const handleSuspend = async (userId) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}/suspend`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/users/${userId}/suspend`, {
+        method: 'PUT',
+      });
       fetchUsers();
       toast.success(
         `User ${
@@ -168,14 +125,9 @@ const AdminDashboard = () => {
   const handleDelete = async (userId) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
       fetchUsers();
       toast.success("User deleted");
     } catch (err) {
@@ -187,14 +139,9 @@ const AdminDashboard = () => {
   const handleApproveJob = async (jobId) => {
     if (!window.confirm("Approve this job?")) return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/jobs/${jobId}/approve`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/jobs/${jobId}/approve`, {
+        method: 'PUT',
+      });
       fetchJobs();
       toast.success("Job approved");
     } catch (err) {
@@ -205,14 +152,9 @@ const AdminDashboard = () => {
   const handleRejectJob = async (jobId) => {
     if (!window.confirm("Reject this job?")) return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/jobs/${jobId}/reject`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/jobs/${jobId}/reject`, {
+        method: 'PUT',
+      });
       fetchJobs();
       toast.success("Job rejected");
     } catch (err) {
@@ -222,15 +164,10 @@ const AdminDashboard = () => {
 
   const handleEditJob = async (jobId, updatedData) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/jobs/${jobId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      await apiFetch(`/admin/jobs/${jobId}`, {
+        method: 'PUT',
         body: JSON.stringify(updatedData),
       });
-      if (!res.ok) throw new Error(await res.text());
       fetchJobs();
       toast.success("Job updated");
     } catch (err) {
@@ -241,11 +178,9 @@ const AdminDashboard = () => {
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm("Are you sure you want to delete this job?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/jobs/${jobId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      await apiFetch(`/admin/jobs/${jobId}`, {
+        method: 'DELETE',
       });
-      if (!res.ok) throw new Error(await res.text());
       fetchJobs();
       toast.success("Job deleted");
     } catch (err) {
@@ -257,19 +192,11 @@ const AdminDashboard = () => {
   const handleUpdateAppStatus = async (appId, newStatus) => {
     if (!window.confirm(`Update status to ${newStatus}?`)) return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/applications/${appId}/status`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      fetchApplications(); // Refreshes list → removes from Pending
+      await apiFetch(`/admin/applications/${appId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      fetchApplications();
       toast.success("Application status updated");
     } catch (err) {
       toast.error(`Failed to update status: ${err.message}`);
@@ -283,15 +210,10 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      const res = await fetch("http://localhost:5000/api/admin/content", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      await apiFetch('/admin/content', {
+        method: 'POST',
         body: JSON.stringify(contentForm),
       });
-      if (!res.ok) throw new Error(await res.text());
       fetchContent();
       setContentForm({
         title: "",
@@ -312,18 +234,10 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/content/${selectedContent._id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(contentForm),
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/content/${selectedContent._id}`, {
+        method: 'PUT',
+        body: JSON.stringify(contentForm),
+      });
       fetchContent();
       setContentForm({
         title: "",
@@ -340,18 +254,10 @@ const AdminDashboard = () => {
 
   const handlePublishContent = async (contentId, isPublished) => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/content/${contentId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ isPublished: !isPublished }),
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/content/${contentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isPublished: !isPublished }),
+      });
       fetchContent();
       toast.success(`Content ${isPublished ? "unpublished" : "published"}`);
     } catch (err) {
@@ -363,14 +269,9 @@ const AdminDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this content?"))
       return;
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/content/${contentId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
+      await apiFetch(`/admin/content/${contentId}`, {
+        method: 'DELETE',
+      });
       fetchContent();
       toast.success("Content deleted");
     } catch (err) {
@@ -446,20 +347,27 @@ const AdminDashboard = () => {
 
     const saveFeedback = async () => {
       try {
-        await fetch(
-          `http://localhost:5000/api/admin/applications/${app._id}/feedback`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ feedback }),
-          }
-        );
+        await apiFetch(`/admin/applications/${app._id}/feedback`, {
+          method: 'PUT',
+          body: JSON.stringify({ feedback }),
+        });
         toast.success("Comments saved");
       } catch {
         toast.error("Failed to save comments");
+      }
+    };
+
+    const handleViewFile = async (type, filename) => {
+      try {
+        const tokenLocal = localStorage.getItem("token");
+        const res = await fetch(`/api/applications/${type}/${encodeURIComponent(filename)}?view=true`, {
+          headers: { Authorization: `Bearer ${tokenLocal}` },
+        });
+        if (!res.ok) throw new Error('Failed to load file');
+        const blob = await res.blob();
+        window.open(window.URL.createObjectURL(blob), "_blank");
+      } catch {
+        toast.error(`Failed to view ${type}`);
       }
     };
 
@@ -502,21 +410,21 @@ const AdminDashboard = () => {
 
         {/* Special Needs Section */}
         {app.hasSpecialNeed ? (
-          <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
-            <h4 className="text-md font-semibold text-blue-800 mb-2">
+          <div className="mt-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 p-4 rounded-lg">
+            <h4 className="text-md font-semibold text-blue-800 dark:text-blue-200 mb-2">
               Special Need Information
             </h4>
-            <p className="text-gray-800 mb-1">
+            <p className="text-gray-800 dark:text-gray-100 mb-1">
               <span className="font-medium">Has Special Need:</span> Yes
             </p>
-            <p className="text-gray-800">
+            <p className="text-gray-800 dark:text-gray-100">
               <span className="font-medium">Details:</span>{" "}
               {app.specialNeedDetails || "Not specified"}
             </p>
           </div>
         ) : (
-          <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg">
-            <p className="text-gray-800">
+          <div className="mt-4 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 p-4 rounded-lg">
+            <p className="text-gray-800 dark:text-gray-100">
               <span className="font-medium">Has Special Need:</span> No
             </p>
           </div>
@@ -525,22 +433,7 @@ const AdminDashboard = () => {
         <div className="my-3 flex gap-3">
           {app.resume && (
             <button
-              onClick={async () => {
-                try {
-                  const res = await fetch(
-                    `http://localhost:5000/api/applications/resume/${encodeURIComponent(
-                      app.resume
-                    )}?view=true`,
-                    {
-                      headers: { Authorization: `Bearer ${token}` },
-                    }
-                  );
-                  const blob = await res.blob();
-                  window.open(window.URL.createObjectURL(blob), "_blank");
-                } catch {
-                  toast.error("Failed to view resume");
-                }
-              }}
+              onClick={() => handleViewFile('resume', app.resume)}
               className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
             >
               View Resume
@@ -548,22 +441,7 @@ const AdminDashboard = () => {
           )}
           {app.certificate && (
             <button
-              onClick={async () => {
-                try {
-                  const res = await fetch(
-                    `http://localhost:5000/api/applications/certificate/${encodeURIComponent(
-                      app.certificate
-                    )}?view=true`,
-                    {
-                      headers: { Authorization: `Bearer ${token}` },
-                    }
-                  );
-                  const blob = await res.blob();
-                  window.open(window.URL.createObjectURL(blob), "_blank");
-                } catch {
-                  toast.error("Failed to view certificate");
-                }
-              }}
+              onClick={() => handleViewFile('certificate', app.certificate)}
               className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
             >
               View Certificate
@@ -572,17 +450,17 @@ const AdminDashboard = () => {
         </div>
 
         <div className="my-3">
-          <label className="block text-sm font-medium mb-1">Comments</label>
+          <label className="block text-sm font-medium mb-1 text-gray-800 dark:text-gray-100">Comments</label>
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            className="w-full p-2 border rounded text-sm bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             rows={2}
             placeholder="Add admin comments..."
           />
           <button
             onClick={saveFeedback}
-            className="mt-1 text-xs bg-blue-600 text-white px-2 py-1 rounded"
+            className="mt-1 text-xs bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600"
           >
             Save Comments
           </button>
@@ -591,7 +469,7 @@ const AdminDashboard = () => {
         <select
           value={app.status || "Pending"}
           onChange={(e) => handleUpdateAppStatus(app._id, e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 p-1 rounded text-sm"
+          className="border border-gray-300 dark:border-gray-600 p-1 rounded text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         >
           <option value="Pending">Pending</option>
           <option value="Accepted">Accepted</option>
@@ -620,7 +498,7 @@ const AdminDashboard = () => {
               localStorage.removeItem("userRole");
               navigate("/login");
             }}
-            className="bg-red-500 dark:bg-red-600 text-white px-4 py-2 rounded hover:bg-red-600"
+            className="bg-red-500 dark:bg-red-600 text-white px-4 py-2 rounded hover:bg-red-600 dark:hover:bg-red-500"
           >
             Logout
           </button>
@@ -655,7 +533,7 @@ const AdminDashboard = () => {
           <div>
             <h2 className="text-xl font-bold mb-4">User Management</h2>
             {users.length === 0 ? (
-              <p className="text-gray-800 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-400">
                 No users found.
               </p>
             ) : (
@@ -663,7 +541,7 @@ const AdminDashboard = () => {
                 {users.map((user) => (
                   <li
                     key={user._id}
-                    className="border p-4 rounded shadow bg-white dark:bg-gray-800"
+                    className="border p-4 rounded shadow bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                   >
                     <p>
                       <strong>Email:</strong> {user.email}
@@ -686,14 +564,14 @@ const AdminDashboard = () => {
                       {!user.approved && (
                         <button
                           onClick={() => handleApprove(user._id)}
-                          className="bg-green-600 text-white px-2 py-1 rounded"
+                          className="bg-green-600 dark:bg-green-700 text-white px-2 py-1 rounded hover:bg-green-700 dark:hover:bg-green-600"
                         >
                           Approve
                         </button>
                       )}
                       <button
                         onClick={() => handleSuspend(user._id)}
-                        className="bg-yellow-600 text-white px-2 py-1 rounded"
+                        className="bg-yellow-600 dark:bg-yellow-700 text-white px-2 py-1 rounded hover:bg-yellow-700 dark:hover:bg-yellow-600"
                       >
                         {user.suspended ? "Unsuspend" : "Suspend"}
                       </button>
@@ -716,13 +594,13 @@ const AdminDashboard = () => {
                             });
                           }
                         }}
-                        className="bg-blue-600 text-white px-2 py-1 rounded"
+                        className="bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(user._id)}
-                        className="bg-red-600 text-white px-2 py-1 rounded"
+                        className="bg-red-600 dark:bg-red-700 text-white px-2 py-1 rounded hover:bg-red-700 dark:hover:bg-red-600"
                       >
                         Delete
                       </button>
@@ -739,13 +617,13 @@ const AdminDashboard = () => {
           <div>
             <h2 className="text-xl font-bold mb-4">Job Management</h2>
             {jobs.length === 0 ? (
-              <p className="text-gray-800 dark:text-gray-300">No jobs found.</p>
+              <p className="text-gray-600 dark:text-gray-400">No jobs found.</p>
             ) : (
               <ul className="space-y-4">
                 {jobs.map((job) => (
                   <li
                     key={job._id}
-                    className="border p-4 rounded shadow bg-white dark:bg-gray-800"
+                    className="border p-4 rounded shadow bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                   >
                     <p>
                       <strong>Title:</strong> {job.title}
@@ -762,13 +640,13 @@ const AdminDashboard = () => {
                         <>
                           <button
                             onClick={() => handleApproveJob(job._id)}
-                            className="bg-green-600 text-white px-2 py-1 rounded"
+                            className="bg-green-600 dark:bg-green-700 text-white px-2 py-1 rounded hover:bg-green-700 dark:hover:bg-green-600"
                           >
                             Approve
                           </button>
                           <button
                             onClick={() => handleRejectJob(job._id)}
-                            className="bg-red-600 text-white px-2 py-1 rounded"
+                            className="bg-red-600 dark:bg-red-700 text-white px-2 py-1 rounded hover:bg-red-700 dark:hover:bg-red-600"
                           >
                             Reject
                           </button>
@@ -776,13 +654,13 @@ const AdminDashboard = () => {
                       )}
                       <button
                         onClick={() => setSelectedJob(job)}
-                        className="bg-yellow-600 text-white px-2 py-1 rounded"
+                        className="bg-yellow-600 dark:bg-yellow-700 text-white px-2 py-1 rounded hover:bg-yellow-700 dark:hover:bg-yellow-600"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteJob(job._id)}
-                        className="bg-red-600 text-white px-2 py-1 rounded"
+                        className="bg-red-600 dark:bg-red-700 text-white px-2 py-1 rounded hover:bg-red-700 dark:hover:bg-red-600"
                       >
                         Remove
                       </button>
@@ -793,8 +671,8 @@ const AdminDashboard = () => {
             )}
             {selectedJob && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full">
-                  <h3 className="text-lg font-bold mb-4">Edit Job</h3>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Edit Job</h3>
                   <input
                     type="text"
                     placeholder="Title"
@@ -802,7 +680,7 @@ const AdminDashboard = () => {
                     onChange={(e) =>
                       setSelectedJob({ ...selectedJob, title: e.target.value })
                     }
-                    className="border p-2 rounded w-full mb-3"
+                    className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <textarea
                     placeholder="Description"
@@ -813,7 +691,7 @@ const AdminDashboard = () => {
                         description: e.target.value,
                       })
                     }
-                    className="border p-2 rounded w-full mb-3 h-24"
+                    className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 h-24 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <input
                     type="text"
@@ -825,7 +703,7 @@ const AdminDashboard = () => {
                         company: e.target.value,
                       })
                     }
-                    className="border p-2 rounded w-full mb-3"
+                    className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <input
                     type="text"
@@ -837,14 +715,14 @@ const AdminDashboard = () => {
                         location: e.target.value,
                       })
                     }
-                    className="border p-2 rounded w-full mb-3"
+                    className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <select
                     value={selectedJob.status || "Active"}
                     onChange={(e) =>
                       setSelectedJob({ ...selectedJob, status: e.target.value })
                     }
-                    className="border p-2 rounded w-full mb-3"
+                    className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
@@ -864,13 +742,13 @@ const AdminDashboard = () => {
                         });
                         setSelectedJob(null);
                       }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded"
+                      className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600"
                     >
                       Save
                     </button>
                     <button
                       onClick={() => setSelectedJob(null)}
-                      className="bg-gray-500 text-white px-4 py-2 rounded"
+                      className="bg-gray-500 dark:bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-600 dark:hover:bg-gray-500"
                     >
                       Cancel
                     </button>
@@ -891,7 +769,7 @@ const AdminDashboard = () => {
                 onClick={() => setAppFilter("pending")}
                 className={`px-4 py-1.5 rounded font-medium text-sm transition-colors ${
                   appFilter === "pending"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-600 dark:bg-blue-700 text-white"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                 }`}
               >
@@ -907,7 +785,7 @@ const AdminDashboard = () => {
                 onClick={() => setAppFilter("reviewed")}
                 className={`px-4 py-1.5 rounded font-medium text-sm transition-colors ${
                   appFilter === "reviewed"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-600 dark:bg-blue-700 text-white"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                 }`}
               >
@@ -949,9 +827,9 @@ const AdminDashboard = () => {
                       <details
                         key={status}
                         open
-                        className="border rounded-lg bg-gray-50 dark:bg-gray-800 p-4"
+                        className="border rounded-lg bg-gray-50 dark:bg-gray-800 p-4 border-gray-200 dark:border-gray-700"
                       >
-                        <summary className="font-semibold cursor-pointer text-lg mb-2">
+                        <summary className="font-semibold cursor-pointer text-lg mb-2 text-gray-900 dark:text-gray-100">
                           {status} ({list.length})
                         </summary>
                         <ul className="space-y-3 ml-4">
@@ -1097,10 +975,10 @@ const AdminDashboard = () => {
           <div>
             <h2 className="text-xl font-bold mb-4">Content Management</h2>
             <div className="mb-8">
-              <h3 className="text-lg font-bold mb-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">
                 {selectedContent ? "Edit Content" : "Add New Content"}
               </h3>
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg border border-gray-200 dark:border-gray-700">
                 <input
                   type="text"
                   placeholder="Title"
@@ -1108,7 +986,7 @@ const AdminDashboard = () => {
                   onChange={(e) =>
                     setContentForm({ ...contentForm, title: e.target.value })
                   }
-                  className="border p-2 rounded w-full mb-3"
+                  className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
                 <textarea
                   placeholder="Body"
@@ -1116,14 +994,14 @@ const AdminDashboard = () => {
                   onChange={(e) =>
                     setContentForm({ ...contentForm, body: e.target.value })
                   }
-                  className="border p-2 rounded w-full mb-3 h-32"
+                  className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 h-32 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
                 <select
                   value={contentForm.category}
                   onChange={(e) =>
                     setContentForm({ ...contentForm, category: e.target.value })
                   }
-                  className="border p-2 rounded w-full mb-3"
+                  className="border border-gray-300 dark:border-gray-600 p-2 rounded w-full mb-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="Homepage">Homepage</option>
                   <option value="FAQ">FAQ</option>
@@ -1132,7 +1010,7 @@ const AdminDashboard = () => {
                   <option value="Guides">Guides</option>
                   <option value="Other">Other</option>
                 </select>
-                <label className="flex items-center gap-2 mb-3">
+                <label className="flex items-center gap-2 mb-3 text-gray-900 dark:text-gray-100">
                   <input
                     type="checkbox"
                     checked={contentForm.isPublished}
@@ -1142,6 +1020,7 @@ const AdminDashboard = () => {
                         isPublished: e.target.checked,
                       })
                     }
+                    className="accent-blue-600 dark:accent-blue-400"
                   />
                   Publish Content
                 </label>
@@ -1150,7 +1029,7 @@ const AdminDashboard = () => {
                     onClick={
                       selectedContent ? handleEditContent : handleCreateContent
                     }
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                    className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600"
                   >
                     {selectedContent ? "Save Changes" : "Create Content"}
                   </button>
@@ -1164,7 +1043,7 @@ const AdminDashboard = () => {
                       });
                       setSelectedContent(null);
                     }}
-                    className="bg-gray-500 text-white px-4 py-2 rounded"
+                    className="bg-gray-500 dark:bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-600 dark:hover:bg-gray-500"
                   >
                     Cancel
                   </button>
@@ -1175,15 +1054,15 @@ const AdminDashboard = () => {
               {contentItems.map((content) => (
                 <li
                   key={content._id}
-                  className="border p-4 rounded shadow bg-gray-100 dark:bg-gray-800"
+                  className="border p-4 rounded shadow bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                 >
-                  <p>
+                  <p className="text-gray-900 dark:text-gray-100">
                     <strong>Title:</strong> {content.title}
                   </p>
-                  <p>
+                  <p className="text-gray-900 dark:text-gray-100">
                     <strong>Category:</strong> {content.category}
                   </p>
-                  <p>
+                  <p className="text-gray-900 dark:text-gray-100">
                     <strong>Published:</strong>{" "}
                     {content.isPublished ? "Yes" : "No"}
                   </p>
@@ -1193,7 +1072,7 @@ const AdminDashboard = () => {
                         setSelectedContent(content);
                         setContentForm({ ...content });
                       }}
-                      className="bg-blue-600 text-white px-2 py-1 rounded"
+                      className="bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600"
                     >
                       Edit
                     </button>
@@ -1201,13 +1080,13 @@ const AdminDashboard = () => {
                       onClick={() =>
                         handlePublishContent(content._id, content.isPublished)
                       }
-                      className="bg-yellow-600 text-white px-2 py-1 rounded"
+                      className="bg-yellow-600 dark:bg-yellow-700 text-white px-2 py-1 rounded hover:bg-yellow-700 dark:hover:bg-yellow-600"
                     >
                       {content.isPublished ? "Unpublish" : "Publish"}
                     </button>
                     <button
                       onClick={() => handleDeleteContent(content._id)}
-                      className="bg-red-600 text-white px-2 py-1 rounded"
+                      className="bg-red-600 dark:bg-red-700 text-white px-2 py-1 rounded hover:bg-red-700 dark:hover:bg-red-600"
                     >
                       Delete
                     </button>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Users, X, Book, Briefcase, Accessibility, Folder, BookOpen, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import apiFetch from '../../utils/api';
 //import toast from 'react-hot-toast';
 
 const highlightMatch = (text, query) => {
@@ -101,11 +102,8 @@ const Resources = () => {
   useEffect(() => {
     const fetchCmsResources = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/content?category=Guides,Guidelines,Announcements', {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        const data = await res.json();
+        setLoading(true);
+        const data = await apiFetch('/content?category=Guides,Guidelines,Announcements');
         setCmsResources(Array.isArray(data) ? data : []);
         setLoading(false);
       } catch (err) {
