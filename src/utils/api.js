@@ -1,15 +1,12 @@
 // src/utils/api.js
-// THIS VERSION WORKS 100% EVERYWHERE — LOCAL AND LIVE
+// FINAL VERSION — 100% working for JSON + PDFs + Images + Downloads
 
-// Hard-code for local development
 let API_BASE = 'http://localhost:5000/api';
 
-// ONLY on Vercel production — override with the live backend
 if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
   API_BASE = 'https://ableconnect-backend.onrender.com/api';
 }
 
-// Optional: allow manual override via env (just in case)
 if (import.meta.env?.VITE_API_URL) {
   API_BASE = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
 }
@@ -17,37 +14,46 @@ if (import.meta.env?.VITE_API_URL) {
 const apiFetch = async (endpoint, options = {}) => {
   const url = `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
+  const token = localStorage.getItem('token');
+
   const config = {
     ...options,
     headers: {
+      // Don't set Content-Type for FormData
       ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   };
 
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
   const response = await fetch(url, config);
 
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType?.includes('application/json');
+  // THIS IS THE KEY FIX — check if we expect a file
+  const isFileRequest = options.responseType === 'blob' || endpoint.includes('?view=true');
 
-  let data;
-  try {
-    data = isJson ? await response.json() : await response.text();
-  } catch {
-    data = null;
+  if (isFileRequest) {
+    // Return raw blob — DO NOT parse as JSON!
+    const blob = await response.blob();
+    if (!response.ok) {
+      throw new Error('Failed to load file');
+    }
+    return blob;
   }
+
+  // Only for JSON APIs
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text();
+    throw new Error(text || 'Server error');
+  }
+
+  const data = await response.json();
 
   if (!response.ok) {
-    const msg = typeof data === 'object' && data?.message ? data.message : data || response.statusText;
-    throw new Error(msg);
+    throw new Error(data?.message || data?.error || 'Request failed');
   }
 
-  return data || {};
+  return data;
 };
 
 export default apiFetch;

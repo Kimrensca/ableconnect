@@ -4,6 +4,11 @@ import toast from "react-hot-toast";
 import Chart from "chart.js/auto";
 import apiFetch from "../../utils/api";
 
+const API_BASE = 
+  window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000' 
+    : 'https://ableconnect-backend.onrender.com';
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -358,15 +363,41 @@ const AdminDashboard = () => {
     };
 
     const handleViewFile = async (type, filename) => {
+      if (!filename) {
+        toast.error('No file uploaded');
+        return;
+      }
+    
       try {
-        const tokenLocal = localStorage.getItem("token");
-        const res = await fetch(`/api/applications/${type}/${encodeURIComponent(filename)}?view=true`, {
-          headers: { Authorization: `Bearer ${tokenLocal}` },
-        });
-        if (!res.ok) throw new Error('Failed to load file');
+        const token = localStorage.getItem('token');
+        if (!token) {
+          toast.error('Please log in again');
+          return;
+        }
+    
+        const res = await fetch(
+          `${API_BASE}/api/applications/${type}/${encodeURIComponent(filename)}?view=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+    
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || 'File not found');
+        }
+    
         const blob = await res.blob();
-        window.open(window.URL.createObjectURL(blob), "_blank");
-      } catch {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+    
+        // Auto cleanup
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    
+      } catch (err) {
+        console.error('View file error:', err);
         toast.error(`Failed to view ${type}`);
       }
     };

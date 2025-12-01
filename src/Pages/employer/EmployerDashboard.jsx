@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import apiFetch from '../../utils/api';
 
+const API_BASE = 'http://localhost:5000';
+
 const EmployerDashboard = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -175,41 +177,48 @@ const EmployerDashboard = () => {
 
   const handleViewFile = async (type, filename) => {
     try {
-      const tokenLocal = localStorage.getItem('token');
-      const url = `/api/applications/${type}/${encodeURIComponent(filename)}?view=true`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${tokenLocal}` },
-      });
-      if (!res.ok) throw new Error('Failed to view file');
+      const token = localStorage.getItem('token');
+      if (!token || !filename) return toast.error('Missing access');
+  
+      const res = await fetch(
+        `${API_BASE}/api/applications/${type}/${encodeURIComponent(filename)}?view=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+  
+      if (!res.ok) throw new Error('File not found');
+  
       const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
-      // optional: revoke after some time
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
-      toast.error(`Failed to view ${type}`);
+      toast.error('Failed to view file');
     }
   };
-
+  
   const handleDownloadFile = async (type, filename) => {
     try {
-      const tokenLocal = localStorage.getItem('token');
-      const url = `/api/applications/${type}/${encodeURIComponent(filename)}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${tokenLocal}` },
-      });
-      if (!res.ok) throw new Error('Failed to download file');
+      const token = localStorage.getItem('token');
+      if (!token || !filename) return;
+  
+      const res = await fetch(
+        `${API_BASE}/api/applications/${type}/${encodeURIComponent(filename)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+  
+      if (!res.ok) throw new Error('Download failed');
+  
       const blob = await res.blob();
-      const urlBlob = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = urlBlob;
+      link.href = url;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(urlBlob);
+      URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(`Failed to download ${type}`);
+      toast.error('Failed to download file');
     }
   };
 
